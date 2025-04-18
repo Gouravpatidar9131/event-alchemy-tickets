@@ -48,9 +48,8 @@ if (typeof window !== 'undefined') {
     window.Buffer = Buffer;
   });
   
-  // Enhanced stream polyfill with more complete implementation
-  // Create prototype objects separately instead of using static properties
-  const readablePrototype = {
+  // Stream polyfills using regular objects and proper inheritance patterns
+  const ReadableProto = {
     pipe: () => { return {} },
     on: () => { return {} },
     once: () => { return {} },
@@ -58,78 +57,50 @@ if (typeof window !== 'undefined') {
     push: () => { return true }
   };
   
-  const writablePrototype = {
+  const WritableProto = {
     on: () => { return {} },
     once: () => { return {} },
     write: () => { return true },
     end: () => {}
   };
   
-  const duplexPrototype = {
-    ...readablePrototype,
-    ...writablePrototype
+  const DuplexProto = {
+    ...ReadableProto,
+    ...WritableProto
   };
   
-  const transformPrototype = {
-    ...duplexPrototype
+  const TransformProto = {
+    ...DuplexProto
   };
   
-  // Stream classes
-  class Readable {
-    _readableState: Record<string, unknown>;
-    constructor() {
-      this._readableState = {};
-      // Copy prototype methods to instance
-      Object.assign(this, readablePrototype);
-    }
+  // Stream classes with constructor functions
+  function Readable() {
+    this._readableState = {};
   }
+  Readable.prototype = ReadableProto;
   
-  class PassThrough {
-    _transformState: Record<string, unknown>;
-    constructor() {
-      this._transformState = {};
-      // Copy prototype methods to instance
-      Object.assign(this, transformPrototype);
-    }
+  function Writable() {
+    this._writableState = {};
   }
+  Writable.prototype = WritableProto;
   
-  class Writable {
-    _writableState: Record<string, unknown>;
-    constructor() {
-      this._writableState = {};
-      // Copy prototype methods to instance
-      Object.assign(this, writablePrototype);
-    }
+  function Duplex() {
+    this._readableState = {};
+    this._writableState = {};
   }
+  Duplex.prototype = DuplexProto;
   
-  class Duplex {
-    _readableState: Record<string, unknown>;
-    _writableState: Record<string, unknown>;
-    constructor() {
-      this._readableState = {};
-      this._writableState = {};
-      // Copy prototype methods to instance
-      Object.assign(this, duplexPrototype);
-    }
+  function Transform() {
+    this._transformState = {};
   }
+  Transform.prototype = TransformProto;
   
-  class Transform {
-    _transformState: Record<string, unknown>;
-    constructor() {
-      this._transformState = {};
-      // Copy prototype methods to instance
-      Object.assign(this, transformPrototype);
-    }
+  function PassThrough() {
+    this._transformState = {};
   }
+  PassThrough.prototype = TransformProto;
   
-  // Manually set prototypes for each class
-  Object.setPrototypeOf(Readable.prototype, readablePrototype);
-  Object.setPrototypeOf(PassThrough.prototype, transformPrototype);
-  Object.setPrototypeOf(Writable.prototype, writablePrototype);
-  Object.setPrototypeOf(Duplex.prototype, duplexPrototype);
-  Object.setPrototypeOf(Transform.prototype, transformPrototype);
-  
-  // @ts-ignore
+  // @ts-ignore - Assigning to stream
   window.stream = {
     Readable,
     PassThrough,
@@ -158,7 +129,7 @@ if (typeof window !== 'undefined') {
     })
   };
 
-  // Enhanced url polyfill
+  // Enhanced url polyfill using the browser's URL
   // @ts-ignore
   window.url = {
     URL: URL,
@@ -205,29 +176,42 @@ if (typeof window !== 'undefined') {
     }
   };
   
-  // FIX: Don't try to directly set window.crypto as it's a read-only property
-  // Instead, extend it if needed with additional methods that might be required
+  // Safely extend crypto if it exists
   if (window.crypto) {
     // Only add the getRandomValues method if it doesn't exist
     if (!window.crypto.getRandomValues) {
-      // @ts-ignore - Extend the existing crypto object instead of replacing it
-      window.crypto.getRandomValues = function(buffer: Uint8Array) {
-        for (let i = 0; i < buffer.length; i++) {
-          buffer[i] = Math.floor(Math.random() * 256);
+      // @ts-ignore - Extend the existing crypto object
+      const originalCrypto = window.crypto;
+      Object.defineProperty(window, 'crypto', {
+        configurable: true,
+        enumerable: true,
+        get: function() {
+          return {
+            ...originalCrypto,
+            getRandomValues: function(buffer: Uint8Array) {
+              for (let i = 0; i < buffer.length; i++) {
+                buffer[i] = Math.floor(Math.random() * 256);
+              }
+              return buffer;
+            }
+          };
         }
-        return buffer;
-      };
+      });
     }
   }
 
-  // Add additional missing polyfills for fs and other Node modules
+  // Add missing fs polyfill that safely throws when used
   // @ts-ignore
   window.fs = {
     readFileSync: () => { throw new Error('fs.readFileSync is not supported in browser environment'); },
-    writeFileSync: () => { throw new Error('fs.writeFileSync is not supported in browser environment'); }
+    writeFileSync: () => { throw new Error('fs.writeFileSync is not supported in browser environment'); },
+    promises: {
+      readFile: () => Promise.reject(new Error('fs.promises.readFile is not supported in browser environment')),
+      writeFile: () => Promise.reject(new Error('fs.promises.writeFile is not supported in browser environment'))
+    }
   };
 
-  // Add additional Node.js dependencies that Metaplex might need
+  // Add path module polyfill
   // @ts-ignore
   window.path = {
     join: (...parts: string[]) => parts.join('/').replace(/\/+/g, '/'),

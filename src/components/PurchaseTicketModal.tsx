@@ -64,9 +64,6 @@ const PurchaseTicketModal = ({
     setIsProcessing(true);
 
     try {
-      // In a production app, this would involve a Solana transaction
-      // For this demo, we're just simulating NFT creation
-      
       // Create a mock image buffer for the ticket
       let imageBuffer: ArrayBuffer;
       try {
@@ -93,8 +90,13 @@ const PurchaseTicketModal = ({
       // Purchase the ticket (mint NFT)
       await purchaseTicketMutation.mutateAsync({
         eventId: event.id,
-        eventDetails: event,
-        ticketType: ticketType.name,
+        eventDetails: {
+          ...event,
+          title: event.title || 'Event',
+          date: event.date || new Date().toISOString(),
+          location: event.location || 'Virtual',
+        },
+        ticketType: ticketType.name || 'General Admission',
         price: totalPrice,
         imageBuffer
       });

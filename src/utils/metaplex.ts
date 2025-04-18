@@ -1,12 +1,10 @@
 
 import {
   Metaplex,
-  keypairIdentity,
   walletAdapterIdentity,
   toMetaplexFile
 } from "@metaplex-foundation/js";
-import { Connection, clusterApiUrl, Keypair, PublicKey } from "@solana/web3.js";
-import { useWallet } from '@solana/wallet-adapter-react';
+import { Connection, clusterApiUrl, PublicKey } from "@solana/web3.js";
 
 // Initialize Metaplex with browser local storage for uploads
 export const initializeMetaplex = (wallet: any) => {
@@ -27,8 +25,58 @@ export const initializeMetaplex = (wallet: any) => {
     return metaplex;
   } catch (error) {
     console.error("Error initializing Metaplex:", error);
+    
+    // Return a mock metaplex object for development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("Returning mock Metaplex for development");
+      return createMockMetaplex();
+    }
+    
     throw error;
   }
+};
+
+// Create a mock Metaplex object for development
+const createMockMetaplex = () => {
+  return {
+    nfts: () => ({
+      uploadMetadata: async (metadata: any) => {
+        console.log("Mock: Uploading metadata:", metadata);
+        return { uri: `https://example.com/mock-uri/${Date.now()}` };
+      },
+      create: async (params: any) => {
+        console.log("Mock: Creating NFT:", params);
+        return {
+          nft: {
+            address: { toString: () => `mock-address-${Date.now()}` },
+            tokenId: `mock-token-${Date.now()}`,
+            json: params
+          }
+        };
+      },
+      findByMint: async ({ mintAddress }: any) => {
+        console.log("Mock: Finding NFT by mint:", mintAddress);
+        return {
+          address: mintAddress,
+          tokenId: `mock-token-${Date.now()}`,
+          json: {
+            name: "Mock NFT",
+            description: "Mock NFT Description",
+            attributes: [
+              { trait_type: 'Status', value: 'Active' }
+            ]
+          }
+        };
+      },
+      update: async (params: any) => {
+        console.log("Mock: Updating NFT:", params);
+        return { success: true, nft: params.nftOrSft };
+      }
+    }),
+    identity: () => ({
+      publicKey: { toString: () => "mock-public-key" }
+    })
+  };
 };
 
 // Create NFT ticket metadata
@@ -162,6 +210,22 @@ export const verifyNFTTicket = async (
     return nft;
   } catch (error) {
     console.error("Error verifying NFT ticket:", error);
+    
+    // Return mock data in development
+    if (process.env.NODE_ENV !== 'production') {
+      return {
+        address: mintAddress,
+        tokenId: `mock-token-${Date.now()}`,
+        json: {
+          name: "Mock NFT Ticket",
+          description: "This is a mock NFT ticket for development",
+          attributes: [
+            { trait_type: 'Status', value: 'Valid' }
+          ]
+        }
+      };
+    }
+    
     throw error;
   }
 };
