@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTickets } from '@/hooks/useTickets';
-import { useEvents } from '@/hooks/useEvents';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -69,8 +68,27 @@ const PurchaseTicketModal = ({
       // For this demo, we're just simulating NFT creation
       
       // Create a mock image buffer for the ticket
-      const response = await fetch(event.image_url);
-      const imageBuffer = await response.arrayBuffer();
+      let imageBuffer: ArrayBuffer;
+      try {
+        // Ensure the image URL is valid and accessible
+        const imageUrl = event.image_url || 'https://via.placeholder.com/500';
+        const response = await fetch(imageUrl);
+        if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+        imageBuffer = await response.arrayBuffer();
+        
+        // Verify we have valid data
+        if (!imageBuffer || imageBuffer.byteLength === 0) {
+          throw new Error("Empty image data");
+        }
+      } catch (imageError) {
+        console.error("Error loading image, using fallback:", imageError);
+        // Create a simple fallback buffer if the image fetch fails
+        imageBuffer = new ArrayBuffer(100);
+        const view = new Uint8Array(imageBuffer);
+        for (let i = 0; i < 100; i++) {
+          view[i] = i % 256;
+        }
+      }
       
       // Purchase the ticket (mint NFT)
       await purchaseTicketMutation.mutateAsync({

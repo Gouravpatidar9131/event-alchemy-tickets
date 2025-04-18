@@ -108,7 +108,6 @@ const EventDetailPage = () => {
   ];
 
   return (
-    
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-grow pt-24 pb-16">

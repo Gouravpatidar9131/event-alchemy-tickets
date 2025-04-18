@@ -53,6 +53,16 @@ if (typeof window !== 'undefined') {
   window.stream = {
     Readable: class Readable {
       _readableState: Record<string, unknown>;
+      // Adding missing prototype property
+      static get prototype() {
+        return {
+          pipe: () => { return {} },
+          on: () => { return {} },
+          once: () => { return {} },
+          read: () => { return null },
+          push: () => { return true }
+        };
+      }
       constructor() {
         this._readableState = {};
       }
@@ -64,6 +74,17 @@ if (typeof window !== 'undefined') {
     },
     PassThrough: class PassThrough {
       _transformState: Record<string, unknown>;
+      // Adding missing prototype property
+      static get prototype() {
+        return {
+          pipe: () => { return {} },
+          on: () => { return {} },
+          once: () => { return {} },
+          write: () => { return true },
+          end: () => {},
+          read: () => { return null }
+        };
+      }
       constructor() {
         this._transformState = {};
       }
@@ -76,6 +97,15 @@ if (typeof window !== 'undefined') {
     },
     Writable: class Writable {
       _writableState: Record<string, unknown>;
+      // Adding missing prototype property
+      static get prototype() {
+        return {
+          on: () => { return {} },
+          once: () => { return {} },
+          write: () => { return true },
+          end: () => {}
+        };
+      }
       constructor() {
         this._writableState = {};
       }
@@ -87,6 +117,18 @@ if (typeof window !== 'undefined') {
     Duplex: class Duplex {
       _readableState: Record<string, unknown>;
       _writableState: Record<string, unknown>;
+      // Adding missing prototype property
+      static get prototype() {
+        return {
+          pipe: () => { return {} },
+          on: () => { return {} },
+          once: () => { return {} },
+          write: () => { return true },
+          end: () => {},
+          read: () => { return null },
+          push: () => { return true }
+        };
+      }
       constructor() {
         this._readableState = {};
         this._writableState = {};
@@ -101,6 +143,18 @@ if (typeof window !== 'undefined') {
     },
     Transform: class Transform {
       _transformState: Record<string, unknown>;
+      // Adding missing prototype property
+      static get prototype() {
+        return {
+          pipe: () => { return {} },
+          on: () => { return {} },
+          once: () => { return {} },
+          write: () => { return true },
+          end: () => {},
+          read: () => { return null },
+          push: () => { return true }
+        };
+      }
       constructor() {
         this._transformState = {};
       }
@@ -131,7 +185,9 @@ if (typeof window !== 'undefined') {
     },
     createServer: () => ({
       listen: () => ({})
-    })
+    }),
+    // Add missing prototype property
+    prototype: {}
   };
 
   // Enhanced url polyfill
@@ -178,7 +234,9 @@ if (typeof window !== 'undefined') {
         console.error('Error formatting URL:', e);
         return '';
       }
-    }
+    },
+    // Add missing prototype property
+    prototype: {}
   };
   
   // FIX: Don't try to directly set window.crypto as it's a read-only property
@@ -195,6 +253,29 @@ if (typeof window !== 'undefined') {
       };
     }
   }
+
+  // Add additional missing prototypes for fs and other Node modules
+  // that Metaplex might be trying to access
+  // @ts-ignore
+  window.fs = {
+    prototype: {},
+    // Add basic fs functions if needed
+    readFileSync: () => { throw new Error('fs.readFileSync is not supported in browser environment'); },
+    writeFileSync: () => { throw new Error('fs.writeFileSync is not supported in browser environment'); }
+  };
+
+  // Add additional Node.js dependencies that Metaplex might need
+  // @ts-ignore
+  window.path = {
+    prototype: {},
+    join: (...parts) => parts.join('/').replace(/\/+/g, '/'),
+    resolve: (...parts) => parts.join('/').replace(/\/+/g, '/'),
+    dirname: (path) => {
+      const parts = path.split('/');
+      parts.pop();
+      return parts.join('/') || '.';
+    }
+  };
 }
 
 export {}; // Make this a module
