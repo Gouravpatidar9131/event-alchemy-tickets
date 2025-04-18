@@ -366,7 +366,7 @@ const EventDetailPage = () => {
                           </div>
                         </div>
                         
-                        <CheckInScanner eventId={event.id.toString()} />
+                        <CheckInScanner eventId={String(event.id)} />
                         
                         <div className="flex justify-between">
                           <Button variant="outline">

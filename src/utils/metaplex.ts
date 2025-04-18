@@ -10,11 +10,16 @@ import { useWallet } from '@solana/wallet-adapter-react';
 
 // Initialize Metaplex with browser local storage for uploads
 export const initializeMetaplex = (wallet: any) => {
-  const connection = new Connection(clusterApiUrl("devnet"));
-  const metaplex = Metaplex.make(connection)
-    .use(walletAdapterIdentity(wallet));
-  
-  return metaplex;
+  try {
+    const connection = new Connection(clusterApiUrl("devnet"));
+    const metaplex = Metaplex.make(connection)
+      .use(walletAdapterIdentity(wallet));
+    
+    return metaplex;
+  } catch (error) {
+    console.error("Error initializing Metaplex:", error);
+    throw error;
+  }
 };
 
 // Create NFT ticket metadata
@@ -25,29 +30,34 @@ export const createNftMetadata = (
   eventDetails: any,
   imageBuffer: ArrayBuffer
 ) => {
-  const file = toMetaplexFile(imageBuffer, 'image.png');
-  
-  return {
-    name,
-    symbol,
-    description,
-    image: file,
-    attributes: [
-      { trait_type: 'Event', value: eventDetails.title },
-      { trait_type: 'Date', value: eventDetails.date },
-      { trait_type: 'Location', value: eventDetails.location },
-      { trait_type: 'Ticket Type', value: eventDetails.ticketType },
-      { trait_type: 'Status', value: 'Valid' }
-    ],
-    properties: {
-      files: [
-        {
-          uri: 'image.png',
-          type: 'image/png'
-        }
-      ]
-    }
-  };
+  try {
+    const file = toMetaplexFile(imageBuffer, 'image.png');
+    
+    return {
+      name,
+      symbol,
+      description,
+      image: file,
+      attributes: [
+        { trait_type: 'Event', value: eventDetails.title },
+        { trait_type: 'Date', value: eventDetails.date },
+        { trait_type: 'Location', value: eventDetails.location },
+        { trait_type: 'Ticket Type', value: eventDetails.ticketType },
+        { trait_type: 'Status', value: 'Valid' }
+      ],
+      properties: {
+        files: [
+          {
+            uri: 'image.png',
+            type: 'image/png'
+          }
+        ]
+      }
+    };
+  } catch (error) {
+    console.error("Error creating NFT metadata:", error);
+    throw error;
+  }
 };
 
 // Create a single NFT ticket
