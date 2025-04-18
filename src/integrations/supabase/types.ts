@@ -9,7 +9,143 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      events: {
+        Row: {
+          candy_machine_id: string | null
+          created_at: string | null
+          creator_id: string
+          date: string
+          description: string
+          id: string
+          image_url: string | null
+          is_published: boolean | null
+          location: string
+          mint_address: string | null
+          price: number
+          tickets_sold: number | null
+          title: string
+          total_tickets: number
+          updated_at: string | null
+        }
+        Insert: {
+          candy_machine_id?: string | null
+          created_at?: string | null
+          creator_id: string
+          date: string
+          description: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean | null
+          location: string
+          mint_address?: string | null
+          price: number
+          tickets_sold?: number | null
+          title: string
+          total_tickets: number
+          updated_at?: string | null
+        }
+        Update: {
+          candy_machine_id?: string | null
+          created_at?: string | null
+          creator_id?: string
+          date?: string
+          description?: string
+          id?: string
+          image_url?: string | null
+          is_published?: boolean | null
+          location?: string
+          mint_address?: string | null
+          price?: number
+          tickets_sold?: number | null
+          title?: string
+          total_tickets?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          events_attended: number | null
+          id: string
+          is_event_creator: boolean | null
+          loyalty_points: number | null
+          updated_at: string | null
+          wallet_address: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          events_attended?: number | null
+          id: string
+          is_event_creator?: boolean | null
+          loyalty_points?: number | null
+          updated_at?: string | null
+          wallet_address?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          events_attended?: number | null
+          id?: string
+          is_event_creator?: boolean | null
+          loyalty_points?: number | null
+          updated_at?: string | null
+          wallet_address?: string | null
+        }
+        Relationships: []
+      }
+      tickets: {
+        Row: {
+          checked_in_at: string | null
+          event_id: string
+          id: string
+          metadata: Json | null
+          mint_address: string | null
+          owner_id: string
+          purchase_date: string | null
+          purchase_price: number
+          status: string
+          token_id: string | null
+        }
+        Insert: {
+          checked_in_at?: string | null
+          event_id: string
+          id?: string
+          metadata?: Json | null
+          mint_address?: string | null
+          owner_id: string
+          purchase_date?: string | null
+          purchase_price: number
+          status?: string
+          token_id?: string | null
+        }
+        Update: {
+          checked_in_at?: string | null
+          event_id?: string
+          id?: string
+          metadata?: Json | null
+          mint_address?: string | null
+          owner_id?: string
+          purchase_date?: string | null
+          purchase_price?: number
+          status?: string
+          token_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
