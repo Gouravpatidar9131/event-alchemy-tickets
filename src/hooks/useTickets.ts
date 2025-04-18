@@ -1,9 +1,11 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { initializeMetaplex, createNFTTicket, updateNFTTicketStatus } from '@/utils/metaplex';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { toast } from '@/components/ui/sonner';
 
 export type Ticket = {
   id: string;
@@ -104,7 +106,14 @@ export const useTickets = () => {
     if (!wallet.connected) throw new Error('Your wallet must be connected');
     
     try {
-      // Create a mock ticket record in the database
+      console.log("Purchasing ticket for event:", eventId);
+      console.log("Ticket details:", { ticketType, price });
+      
+      // Create a mock NFT ticket using our mock metaplex implementation
+      const metaplex = initializeMetaplex();
+      
+      // In a production app, we would mint an actual NFT here
+      // For now, we create a mock ticket record in the database
       const ticketData = {
         event_id: eventId,
         owner_id: user.id,
@@ -133,6 +142,7 @@ export const useTickets = () => {
         })
         .eq('id', eventId);
       
+      console.log("Ticket purchased successfully:", data);
       return data;
     } catch (error) {
       console.error('Error purchasing ticket:', error);
@@ -155,10 +165,9 @@ export const useTickets = () => {
       if (ticket.status === 'used') throw new Error('This ticket has already been used');
       
       // 2. Update the NFT metadata to mark it as used (in a production app)
-      if (ticket.mint_address && wallet.connected) {
+      if (ticket.mint_address) {
         try {
-          const metaplex = initializeMetaplex(wallet);
-          await updateNFTTicketStatus(metaplex, ticket.mint_address, 'Used');
+          await updateNFTTicketStatus(ticket.mint_address, 'Used');
         } catch (nftError) {
           console.error('Error updating NFT status:', nftError);
           // Continue with the check-in process even if the NFT update fails

@@ -1,5 +1,4 @@
 
-import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -65,67 +64,94 @@ export const useEvents = () => {
   const createEvent = async (eventData: Omit<Event, 'id' | 'created_at' | 'updated_at' | 'tickets_sold' | 'is_published' | 'creator_id'>) => {
     if (!user) throw new Error('You must be logged in to create an event');
     
-    const { data, error } = await supabase
-      .from('events')
-      .insert({
-        ...eventData,
-        creator_id: user.id,
-        tickets_sold: 0,
-        is_published: false
-      })
-      .select()
-      .single();
+    try {
+      console.log("Creating event with data:", eventData);
+      
+      const { data, error } = await supabase
+        .from('events')
+        .insert({
+          ...eventData,
+          creator_id: user.id,
+          tickets_sold: 0,
+          is_published: false
+        })
+        .select()
+        .single();
 
-    if (error) throw new Error(error.message);
-    return data as Event;
+      if (error) {
+        console.error("Database error:", error);
+        throw new Error(error.message);
+      }
+      
+      console.log("Event created successfully:", data);
+      return data as Event;
+    } catch (error: any) {
+      console.error("Error creating event:", error);
+      throw error;
+    }
   };
 
   const updateEvent = async ({ id, ...eventData }: Partial<Event> & { id: string }) => {
     if (!user) throw new Error('You must be logged in to update an event');
     
-    const { data, error } = await supabase
-      .from('events')
-      .update({
-        ...eventData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .update({
+          ...eventData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
 
-    if (error) throw new Error(error.message);
-    return data as Event;
+      if (error) throw new Error(error.message);
+      return data as Event;
+    } catch (error: any) {
+      console.error("Error updating event:", error);
+      throw error;
+    }
   };
 
   const publishEvent = async (id: string, mintAddress?: string, candyMachineId?: string) => {
     if (!user) throw new Error('You must be logged in to publish an event');
     
-    const { data, error } = await supabase
-      .from('events')
-      .update({
-        is_published: true,
-        mint_address: mintAddress,
-        candy_machine_id: candyMachineId,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .update({
+          is_published: true,
+          mint_address: mintAddress,
+          candy_machine_id: candyMachineId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
 
-    if (error) throw new Error(error.message);
-    return data as Event;
+      if (error) throw new Error(error.message);
+      return data as Event;
+    } catch (error: any) {
+      console.error("Error publishing event:", error);
+      throw error;
+    }
   };
 
   const deleteEvent = async (id: string) => {
     if (!user) throw new Error('You must be logged in to delete an event');
     
-    const { error } = await supabase
-      .from('events')
-      .delete()
-      .eq('id', id);
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', id);
 
-    if (error) throw new Error(error.message);
-    return { id };
+      if (error) throw new Error(error.message);
+      return { id };
+    } catch (error: any) {
+      console.error("Error deleting event:", error);
+      throw error;
+    }
   };
 
   // Mutations

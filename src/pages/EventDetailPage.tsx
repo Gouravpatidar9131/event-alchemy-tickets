@@ -32,11 +32,18 @@ const EventDetailPage = () => {
   const availableTickets = event ? event.total_tickets - event.tickets_sold : 0;
   const eventDate = event ? new Date(event.date) : new Date();
   
+  // Define ticket types based on event price
   const ticketTypes = [
     { name: 'General Admission', price: event?.price?.toString() || '0' },
     { name: 'VIP', price: (event?.price ? event.price * 2 : 0).toString() },
     { name: 'Premium', price: (event?.price ? event.price * 3 : 0).toString() }
   ];
+  
+  // Add ticket types to event object
+  const eventWithTicketTypes = event ? {
+    ...event,
+    ticketTypes
+  } : null;
   
   useEffect(() => {
     if (error) {
@@ -78,11 +85,17 @@ const EventDetailPage = () => {
           <h1 className="text-3xl font-bold mb-4">{event.title}</h1>
           
           <div className="rounded-lg overflow-hidden mb-6 aspect-video bg-muted">
-            <img 
-              src={event.image_url} 
-              alt={event.title} 
-              className="w-full h-full object-cover"
-            />
+            {event.image_url ? (
+              <img 
+                src={event.image_url} 
+                alt={event.title} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                <Ticket className="h-12 w-12 text-gray-400" />
+              </div>
+            )}
           </div>
           
           <div className="flex flex-wrap gap-4 mb-6">
@@ -217,11 +230,11 @@ const EventDetailPage = () => {
         </div>
       </div>
       
-      {event && (
+      {eventWithTicketTypes && (
         <PurchaseTicketModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          event={event}
+          event={eventWithTicketTypes}
           selectedTicketType={selectedTicketType}
           ticketQuantity={ticketQuantity}
         />

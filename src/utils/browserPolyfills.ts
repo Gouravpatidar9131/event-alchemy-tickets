@@ -11,23 +11,33 @@ if (typeof window !== 'undefined') {
     env: {},
     version: '1.0.0',
     versions: {
-      node: '16.0.0'
+      node: '16.0.0',
+      http_parser: '0.0.0',
+      v8: '0.0.0',
+      ares: '0.0.0',
+      uv: '0.0.0',
+      zlib: '0.0.0',
+      modules: '0.0.0'
     },
     nextTick: (cb: Function) => setTimeout(cb, 0)
   };
 
   // Mock Buffer API with proper types
   class MockBuffer extends Uint8Array {
-    static from(data: any, encoding?: string): MockBuffer {
-      if (encoding === 'hex') {
-        const hexStr = data.toString();
+    // Properly override static methods to match TypeScript definitions
+    static from(arrayLike: ArrayLike<number>): Uint8Array;
+    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Uint8Array;
+    static from(arrayLike: any, mapfn?: any, thisArg?: any): Uint8Array {
+      if (typeof arrayLike === 'string' && mapfn === 'hex') {
+        // Handle hex strings
+        const hexStr = arrayLike.toString();
         const result = new MockBuffer(hexStr.length / 2);
         for (let i = 0; i < hexStr.length; i += 2) {
           result[i / 2] = parseInt(hexStr.substring(i, i + 2), 16);
         }
         return result;
       }
-      return new MockBuffer(data);
+      return new MockBuffer(arrayLike);
     }
 
     static alloc(size: number): MockBuffer {
@@ -46,8 +56,24 @@ if (typeof window !== 'undefined') {
     compare(): number { return 0; }
   }
 
-  // @ts-ignore
+  // @ts-ignore - Bypass TypeScript type checking for Buffer assignment
   window.Buffer = MockBuffer;
+
+  // Add missing Node.js modules
+  // @ts-ignore
+  window.stream = { Readable: class {}, Writable: class {}, Transform: class {} };
+  
+  // @ts-ignore
+  window.http = { createServer: () => ({}) };
+  
+  // @ts-ignore
+  window.fs = { 
+    readFileSync: () => new Uint8Array(0),
+    writeFileSync: () => {},
+    existsSync: () => false,
+    mkdir: (path: string, cb: Function) => cb(null),
+    mkdirSync: () => {}
+  };
 
   // Simple URL utilities
   // @ts-ignore

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useAuth } from '@/providers/AuthProvider';
@@ -36,7 +37,11 @@ const PurchaseTicketModal = ({
   const { purchaseTicketMutation } = useTickets();
   const navigate = useNavigate();
 
-  const ticketType = event?.ticketTypes?.[selectedTicketType];
+  const ticketType = event?.ticketTypes?.[selectedTicketType] || {
+    name: 'General Admission',
+    price: event?.price || 0.5
+  };
+  
   const totalPrice = ticketType ? parseFloat(ticketType.price) * ticketQuantity : 0;
 
   const handlePurchase = async () => {
@@ -106,6 +111,10 @@ const PurchaseTicketModal = ({
           ticketType: ticketType.name || 'General Admission',
           price: totalPrice,
           imageBuffer
+        });
+        
+        toast('Ticket purchased successfully!', {
+          description: 'Your ticket has been added to your collection.'
         });
         
         onClose();
