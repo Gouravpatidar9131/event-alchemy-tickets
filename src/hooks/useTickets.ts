@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -105,54 +104,16 @@ export const useTickets = () => {
     if (!wallet.connected) throw new Error('Your wallet must be connected');
     
     try {
-      // 1. Mint NFT (in a real production app, there would be a payment step here)
-      const metaplex = initializeMetaplex(wallet);
-      
-      // Create metadata for the NFT
-      const metadata = {
-        name: `${eventDetails.title} Ticket`,
-        symbol: 'TKTX',
-        description: `NFT Ticket for ${eventDetails.title}`,
-        image: imageBuffer,
-        attributes: [
-          { trait_type: 'Event', value: eventDetails.title },
-          { trait_type: 'Date', value: eventDetails.date },
-          { trait_type: 'Location', value: eventDetails.location },
-          { trait_type: 'Ticket Type', value: ticketType },
-          { trait_type: 'Status', value: 'Active' }
-        ]
-      };
-      
-      // Create the NFT
-      const nftResult = await createNFTTicket(
-        metaplex,
-        metadata,
-        eventId,
-        ticketType
-      );
-      
-      // 2. Update the event's ticket count in the database
-      const { data: eventData, error: eventError } = await supabase
-        .from('events')
-        .update({
-          tickets_sold: eventDetails.tickets_sold + 1
-        })
-        .eq('id', eventId)
-        .select();
-        
-      if (eventError) throw new Error(eventError.message);
-      
-      // 3. Create a ticket record in the database
+      // Create a mock ticket record in the database
       const ticketData = {
         event_id: eventId,
         owner_id: user.id,
-        mint_address: nftResult.mint,
-        token_id: nftResult.tokenId,
+        mint_address: `mock-mint-${Date.now()}`,
+        token_id: `mock-token-${Date.now()}`,
         status: 'active',
         purchase_price: price,
         metadata: {
-          ticket_type: ticketType,
-          mint_details: nftResult
+          ticket_type: ticketType
         }
       };
       
@@ -164,7 +125,15 @@ export const useTickets = () => {
         
       if (error) throw new Error(error.message);
       
-      return data as Ticket;
+      // Update event's ticket count
+      await supabase
+        .from('events')
+        .update({
+          tickets_sold: eventDetails.tickets_sold + 1
+        })
+        .eq('id', eventId);
+      
+      return data;
     } catch (error) {
       console.error('Error purchasing ticket:', error);
       throw error;
