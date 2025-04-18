@@ -1,15 +1,14 @@
 
-// Polyfill for Node.js global and other required globals in browser environments
+// Polyfill for Node.js modules in browser environments
 if (typeof window !== 'undefined') {
   // Make window.global available
   // @ts-ignore
   window.global = window;
   
-  // Provide basic process object with proper versions type
+  // Provide basic process object
   // @ts-ignore
   window.process = { 
     env: {},
-    // Remove browser property to fix TS error
     version: '1.0.0',
     versions: {
       node: '16.0.0',
@@ -24,34 +23,9 @@ if (typeof window !== 'undefined') {
     nextTick: (cb: Function) => setTimeout(cb, 0)
   };
   
-  // Setup Buffer 
-  // @ts-ignore
-  window.Buffer = window.Buffer || null;
-  
-  // Provide basic util module exports that might be needed
-  // @ts-ignore
-  window.util = {
-    inherits: function(ctor: any, superCtor: any) {
-      if (superCtor) {
-        ctor.super_ = superCtor;
-        Object.setPrototypeOf(ctor.prototype, superCtor.prototype);
-      }
-    },
-    deprecate: function(fn: Function) {
-      return fn;
-    }
-  };
-  
-  // Dynamically import buffer instead of using require
-  import('buffer').then(({ Buffer }) => {
-    // @ts-ignore
-    window.Buffer = Buffer;
-  });
-  
-  // Stream polyfills using constructor functions instead of classes
-  // This avoids the 'Classes may not have a static property named prototype' error
-  function Readable() {}
-  Readable.prototype = {
+  // Create proper Stream constructors using function constructors to avoid class prototype issues
+  function ReadableConstructor() {}
+  ReadableConstructor.prototype = {
     pipe: function() { return {} },
     on: function() { return this },
     once: function() { return this },
@@ -59,64 +33,89 @@ if (typeof window !== 'undefined') {
     push: function() { return true }
   };
   
-  function Writable() {}
-  Writable.prototype = {
+  function WritableConstructor() {}
+  WritableConstructor.prototype = {
     on: function() { return this },
     once: function() { return this },
     write: function() { return true },
     end: function() {}
   };
   
-  function Duplex() {}
-  Duplex.prototype = Object.create(Readable.prototype);
-  Object.assign(Duplex.prototype, Writable.prototype);
+  function DuplexConstructor() {}
+  // Set up prototype to inherit from Readable
+  DuplexConstructor.prototype = Object.create(ReadableConstructor.prototype);
+  // Copy Writable methods to Duplex prototype
+  Object.assign(DuplexConstructor.prototype, WritableConstructor.prototype);
   
-  function Transform() {}
-  Transform.prototype = Object.create(Duplex.prototype);
+  function TransformConstructor() {}
+  TransformConstructor.prototype = Object.create(DuplexConstructor.prototype);
   
-  function PassThrough() {}
-  PassThrough.prototype = Object.create(Transform.prototype);
+  function PassThroughConstructor() {}
+  PassThroughConstructor.prototype = Object.create(TransformConstructor.prototype);
   
-  // @ts-ignore - Assigning to stream
+  // Set up stream properly with constructor functions
+  // @ts-ignore
   window.stream = {
-    Readable: Readable,
-    Writable: Writable,
-    Duplex: Duplex,
-    Transform: Transform,
-    PassThrough: PassThrough
+    Readable: ReadableConstructor,
+    Writable: WritableConstructor,
+    Duplex: DuplexConstructor,
+    Transform: TransformConstructor,
+    PassThrough: PassThroughConstructor
   };
-
-  // Enhanced http polyfill
+  
+  // Ensure Buffer is available
+  if (!window.Buffer) {
+    // @ts-ignore
+    window.Buffer = {
+      from: function(data, encoding) {
+        if (encoding === 'hex') {
+          // Convert hex to Uint8Array
+          const hexStr = data.toString();
+          const result = new Uint8Array(hexStr.length / 2);
+          for (let i = 0; i < hexStr.length; i += 2) {
+            result[i / 2] = parseInt(hexStr.substring(i, i + 2), 16);
+          }
+          return result;
+        }
+        return new Uint8Array(data);
+      },
+      alloc: function(size) {
+        return new Uint8Array(size);
+      },
+      isBuffer: function(obj) {
+        return ArrayBuffer.isView(obj);
+      }
+    };
+  }
+  
+  // Provide enhanced http polyfill with proper methods
   // @ts-ignore
   window.http = {
     STATUS_CODES: {
-      200: 'OK',
-      201: 'Created',
-      202: 'Accepted',
-      204: 'No Content',
-      400: 'Bad Request',
-      401: 'Unauthorized',
-      403: 'Forbidden',
-      404: 'Not Found',
-      409: 'Conflict',
-      500: 'Internal Server Error'
+      200: 'OK', 201: 'Created', 202: 'Accepted', 204: 'No Content',
+      400: 'Bad Request', 401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found',
+      409: 'Conflict', 500: 'Internal Server Error'
     },
     createServer: function() {
+      return { listen: function() { return {} } };
+    },
+    request: function() {
       return {
-        listen: function() { return {} }
+        on: function() { return this },
+        end: function() {}
       };
     }
   };
-
+  
   // Enhanced url polyfill using the browser's URL
   // @ts-ignore
   window.url = {
     URL: URL,
-    parse: function(url) {
+    parse: function(url, parseQueryString) {
       try {
         const parsed = new URL(url, window.location.origin);
         // Add node.js url.parse compatible properties
-        return {
+        const result = {
           protocol: parsed.protocol,
           hostname: parsed.hostname,
           port: parsed.port,
@@ -124,8 +123,17 @@ if (typeof window !== 'undefined') {
           search: parsed.search,
           hash: parsed.hash,
           href: parsed.href,
-          query: Object.fromEntries(parsed.searchParams)
+          query: {}
         };
+        
+        // Parse query string if requested
+        if (parseQueryString) {
+          result.query = Object.fromEntries(parsed.searchParams);
+        } else {
+          result.query = parsed.search.substring(1);
+        }
+        
+        return result;
       } catch (e) {
         console.error('Error parsing URL:', e);
         return {};
@@ -155,31 +163,7 @@ if (typeof window !== 'undefined') {
     }
   };
   
-  // Safely extend crypto if it exists
-  if (window.crypto) {
-    // Only add the getRandomValues method if it doesn't exist
-    if (!window.crypto.getRandomValues) {
-      // @ts-ignore - Extend the existing crypto object
-      const originalCrypto = window.crypto;
-      Object.defineProperty(window, 'crypto', {
-        configurable: true,
-        enumerable: true,
-        get: function() {
-          return {
-            ...originalCrypto,
-            getRandomValues: function(buffer) {
-              for (let i = 0; i < buffer.length; i++) {
-                buffer[i] = Math.floor(Math.random() * 256);
-              }
-              return buffer;
-            }
-          };
-        }
-      });
-    }
-  }
-
-  // Add missing fs polyfill that safely throws when used
+  // Mock fs functions that safely throw when used
   // @ts-ignore
   window.fs = {
     readFileSync: function() { throw new Error('fs.readFileSync is not supported in browser environment'); },
@@ -189,8 +173,8 @@ if (typeof window !== 'undefined') {
       writeFile: function() { return Promise.reject(new Error('fs.promises.writeFile is not supported in browser environment')); }
     }
   };
-
-  // Add path module polyfill
+  
+  // Add basic path module polyfill
   // @ts-ignore
   window.path = {
     join: function() {
@@ -203,6 +187,20 @@ if (typeof window !== 'undefined') {
       const parts = path.split('/');
       parts.pop();
       return parts.join('/') || '.';
+    }
+  };
+  
+  // Add basic util polyfill
+  // @ts-ignore
+  window.util = {
+    inherits: function(ctor, superCtor) {
+      if (superCtor) {
+        ctor.super_ = superCtor;
+        Object.setPrototypeOf(ctor.prototype, superCtor.prototype);
+      }
+    },
+    deprecate: function(fn) {
+      return fn;
     }
   };
 }

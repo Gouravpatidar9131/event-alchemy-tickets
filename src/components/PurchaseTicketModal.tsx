@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useAuth } from '@/providers/AuthProvider';
@@ -64,7 +63,7 @@ const PurchaseTicketModal = ({
     setIsProcessing(true);
 
     try {
-      // Create a fallback image buffer in case the fetch fails
+      // Create a small placeholder image buffer as fallback
       const fallbackBuffer = new ArrayBuffer(100);
       const view = new Uint8Array(fallbackBuffer);
       for (let i = 0; i < 100; i++) {
@@ -92,25 +91,33 @@ const PurchaseTicketModal = ({
       
       console.log("Using image buffer of size:", imageBuffer.byteLength);
       
-      // Purchase the ticket (mint NFT)
-      await purchaseTicketMutation.mutateAsync({
-        eventId: event.id,
-        eventDetails: {
-          ...event,
-          title: event.title || 'Event',
-          date: event.date || new Date().toISOString(),
-          location: event.location || 'Virtual',
+      // Purchase the ticket (mint NFT) with error handling
+      try {
+        await purchaseTicketMutation.mutateAsync({
+          eventId: event.id,
+          eventDetails: {
+            ...event,
+            title: event.title || 'Event',
+            date: event.date || new Date().toISOString(),
+            location: event.location || 'Virtual',
+            ticketType: ticketType.name || 'General Admission',
+            tickets_sold: event.tickets_sold || 0,
+          },
           ticketType: ticketType.name || 'General Admission',
-        },
-        ticketType: ticketType.name || 'General Admission',
-        price: totalPrice,
-        imageBuffer
-      });
-      
-      onClose();
-      navigate('/dashboard');
+          price: totalPrice,
+          imageBuffer
+        });
+        
+        onClose();
+        navigate('/dashboard');
+      } catch (purchaseError: any) {
+        console.error("Purchase ticket error:", purchaseError);
+        toast('Failed to purchase ticket', {
+          description: purchaseError.message || 'Transaction failed. Please try again.',
+        });
+      }
     } catch (error: any) {
-      console.error('Error purchasing ticket:', error);
+      console.error('Error in purchase process:', error);
       toast('Failed to purchase ticket', {
         description: error.message || 'An unexpected error occurred',
       });
