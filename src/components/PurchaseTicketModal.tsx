@@ -69,7 +69,7 @@ const PurchaseTicketModal = ({
       // For this demo, we're just simulating NFT creation
       
       // Create a mock image buffer for the ticket
-      const response = await fetch(event.image_url); // Using image_url instead of imageUrl
+      const response = await fetch(event.image_url);
       const imageBuffer = await response.arrayBuffer();
       
       // Purchase the ticket (mint NFT)
