@@ -64,28 +64,33 @@ const PurchaseTicketModal = ({
     setIsProcessing(true);
 
     try {
-      // Create a mock image buffer for the ticket
-      let imageBuffer: ArrayBuffer;
-      try {
-        // Ensure the image URL is valid and accessible
-        const imageUrl = event.image_url || 'https://via.placeholder.com/500';
-        const response = await fetch(imageUrl);
-        if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
-        imageBuffer = await response.arrayBuffer();
-        
-        // Verify we have valid data
-        if (!imageBuffer || imageBuffer.byteLength === 0) {
-          throw new Error("Empty image data");
-        }
-      } catch (imageError) {
-        console.error("Error loading image, using fallback:", imageError);
-        // Create a simple fallback buffer if the image fetch fails
-        imageBuffer = new ArrayBuffer(100);
-        const view = new Uint8Array(imageBuffer);
-        for (let i = 0; i < 100; i++) {
-          view[i] = i % 256;
+      // Create a fallback image buffer in case the fetch fails
+      const fallbackBuffer = new ArrayBuffer(100);
+      const view = new Uint8Array(fallbackBuffer);
+      for (let i = 0; i < 100; i++) {
+        view[i] = i % 256;
+      }
+      
+      // Try to get the event image
+      let imageBuffer: ArrayBuffer = fallbackBuffer;
+      
+      if (event.image_url) {
+        try {
+          console.log("Fetching image from:", event.image_url);
+          const response = await fetch(event.image_url);
+          if (response.ok) {
+            const buffer = await response.arrayBuffer();
+            if (buffer && buffer.byteLength > 0) {
+              imageBuffer = buffer;
+              console.log("Successfully loaded image buffer:", buffer.byteLength, "bytes");
+            }
+          }
+        } catch (imageError) {
+          console.error("Error loading image, using fallback:", imageError);
         }
       }
+      
+      console.log("Using image buffer of size:", imageBuffer.byteLength);
       
       // Purchase the ticket (mint NFT)
       await purchaseTicketMutation.mutateAsync({
@@ -95,6 +100,7 @@ const PurchaseTicketModal = ({
           title: event.title || 'Event',
           date: event.date || new Date().toISOString(),
           location: event.location || 'Virtual',
+          ticketType: ticketType.name || 'General Admission',
         },
         ticketType: ticketType.name || 'General Admission',
         price: totalPrice,

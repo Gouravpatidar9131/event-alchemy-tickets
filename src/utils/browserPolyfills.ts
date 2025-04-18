@@ -48,65 +48,42 @@ if (typeof window !== 'undefined') {
     window.Buffer = Buffer;
   });
   
-  // Stream polyfills using regular objects and proper inheritance patterns
-  const ReadableProto = {
-    pipe: () => { return {} },
-    on: () => { return {} },
-    once: () => { return {} },
-    read: () => { return null },
-    push: () => { return true }
+  // Stream polyfills using constructor functions instead of classes
+  // This avoids the 'Classes may not have a static property named prototype' error
+  function Readable() {}
+  Readable.prototype = {
+    pipe: function() { return {} },
+    on: function() { return this },
+    once: function() { return this },
+    read: function() { return null },
+    push: function() { return true }
   };
   
-  const WritableProto = {
-    on: () => { return {} },
-    once: () => { return {} },
-    write: () => { return true },
-    end: () => {}
+  function Writable() {}
+  Writable.prototype = {
+    on: function() { return this },
+    once: function() { return this },
+    write: function() { return true },
+    end: function() {}
   };
   
-  const DuplexProto = {
-    ...ReadableProto,
-    ...WritableProto
-  };
+  function Duplex() {}
+  Duplex.prototype = Object.create(Readable.prototype);
+  Object.assign(Duplex.prototype, Writable.prototype);
   
-  const TransformProto = {
-    ...DuplexProto
-  };
+  function Transform() {}
+  Transform.prototype = Object.create(Duplex.prototype);
   
-  // Stream classes with constructor functions
-  function Readable() {
-    this._readableState = {};
-  }
-  Readable.prototype = ReadableProto;
-  
-  function Writable() {
-    this._writableState = {};
-  }
-  Writable.prototype = WritableProto;
-  
-  function Duplex() {
-    this._readableState = {};
-    this._writableState = {};
-  }
-  Duplex.prototype = DuplexProto;
-  
-  function Transform() {
-    this._transformState = {};
-  }
-  Transform.prototype = TransformProto;
-  
-  function PassThrough() {
-    this._transformState = {};
-  }
-  PassThrough.prototype = TransformProto;
+  function PassThrough() {}
+  PassThrough.prototype = Object.create(Transform.prototype);
   
   // @ts-ignore - Assigning to stream
   window.stream = {
-    Readable,
-    PassThrough,
-    Writable,
-    Duplex,
-    Transform
+    Readable: Readable,
+    Writable: Writable,
+    Duplex: Duplex,
+    Transform: Transform,
+    PassThrough: PassThrough
   };
 
   // Enhanced http polyfill
@@ -124,16 +101,18 @@ if (typeof window !== 'undefined') {
       409: 'Conflict',
       500: 'Internal Server Error'
     },
-    createServer: () => ({
-      listen: () => ({})
-    })
+    createServer: function() {
+      return {
+        listen: function() { return {} }
+      };
+    }
   };
 
   // Enhanced url polyfill using the browser's URL
   // @ts-ignore
   window.url = {
     URL: URL,
-    parse: (url: string) => {
+    parse: function(url) {
       try {
         const parsed = new URL(url, window.location.origin);
         // Add node.js url.parse compatible properties
@@ -152,7 +131,7 @@ if (typeof window !== 'undefined') {
         return {};
       }
     },
-    format: (urlObj: any) => {
+    format: function(urlObj) {
       if (typeof urlObj === 'string') return urlObj;
       if (urlObj instanceof URL) return urlObj.toString();
       
@@ -188,7 +167,7 @@ if (typeof window !== 'undefined') {
         get: function() {
           return {
             ...originalCrypto,
-            getRandomValues: function(buffer: Uint8Array) {
+            getRandomValues: function(buffer) {
               for (let i = 0; i < buffer.length; i++) {
                 buffer[i] = Math.floor(Math.random() * 256);
               }
@@ -203,20 +182,24 @@ if (typeof window !== 'undefined') {
   // Add missing fs polyfill that safely throws when used
   // @ts-ignore
   window.fs = {
-    readFileSync: () => { throw new Error('fs.readFileSync is not supported in browser environment'); },
-    writeFileSync: () => { throw new Error('fs.writeFileSync is not supported in browser environment'); },
+    readFileSync: function() { throw new Error('fs.readFileSync is not supported in browser environment'); },
+    writeFileSync: function() { throw new Error('fs.writeFileSync is not supported in browser environment'); },
     promises: {
-      readFile: () => Promise.reject(new Error('fs.promises.readFile is not supported in browser environment')),
-      writeFile: () => Promise.reject(new Error('fs.promises.writeFile is not supported in browser environment'))
+      readFile: function() { return Promise.reject(new Error('fs.promises.readFile is not supported in browser environment')); },
+      writeFile: function() { return Promise.reject(new Error('fs.promises.writeFile is not supported in browser environment')); }
     }
   };
 
   // Add path module polyfill
   // @ts-ignore
   window.path = {
-    join: (...parts: string[]) => parts.join('/').replace(/\/+/g, '/'),
-    resolve: (...parts: string[]) => parts.join('/').replace(/\/+/g, '/'),
-    dirname: (path: string) => {
+    join: function() {
+      return Array.from(arguments).join('/').replace(/\/+/g, '/');
+    },
+    resolve: function() {
+      return Array.from(arguments).join('/').replace(/\/+/g, '/');
+    },
+    dirname: function(path) {
       const parts = path.split('/');
       parts.pop();
       return parts.join('/') || '.';
