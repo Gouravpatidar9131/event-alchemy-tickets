@@ -57,7 +57,6 @@ const EventDetailPage = () => {
     setIsPurchaseModalOpen(false);
   };
 
-  // If event is loading, show loading state
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -73,7 +72,6 @@ const EventDetailPage = () => {
     );
   }
 
-  // If event is not found or error, show error
   if (!event || error) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -92,10 +90,8 @@ const EventDetailPage = () => {
     );
   }
 
-  // Check if current user is the event creator
   const isCreator = user && event.creator_id === user.id;
 
-  // Mock ticket types - in a real app, these would come from the database
   const ticketTypes = [
     {
       name: 'General Admission',
@@ -116,7 +112,6 @@ const EventDetailPage = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-grow pt-24 pb-16">
-        {/* Hero image */}
         <div className="relative h-64 md:h-96 bg-gradient-to-r from-solana-purple/70 to-solana-blue/70">
           <img 
             src={event.image_url} 
@@ -128,7 +123,6 @@ const EventDetailPage = () => {
         
         <div className="container mx-auto px-4 -mt-20 relative z-10">
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Event details section */}
             <div className="w-full lg:w-2/3">
               <div className="glass-card rounded-xl p-6 mb-8">
                 <div className="flex items-center mb-4">
@@ -372,7 +366,7 @@ const EventDetailPage = () => {
                           </div>
                         </div>
                         
-                        <CheckInScanner eventId={event.id} />
+                        <CheckInScanner eventId={event.id.toString()} />
                         
                         <div className="flex justify-between">
                           <Button variant="outline">
@@ -389,7 +383,6 @@ const EventDetailPage = () => {
               </div>
             </div>
             
-            {/* Ticket preview section */}
             <div className="w-full lg:w-1/3">
               <div className="sticky top-24">
                 <div className="relative">
@@ -457,7 +450,6 @@ const EventDetailPage = () => {
       </main>
       <Footer />
       
-      {/* Purchase Modal */}
       <PurchaseTicketModal
         isOpen={isPurchaseModalOpen}
         onClose={closePurchaseModal}

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, Clock, MapPin, QrCode, ArrowRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react'; // Changed from default import to named import
 
 interface TicketCardProps {
   ticket: any;
@@ -87,7 +87,7 @@ const TicketCard = ({ ticket, showDetails }: TicketCardProps) => {
         
         {showQR ? (
           <div className="flex flex-col items-center justify-center space-y-3 my-4">
-            <QRCode value={qrData} size={150} renderAs="canvas" level="H" />
+            <QRCodeSVG value={qrData} size={150} level="H" /> {/* Changed from QRCode to QRCodeSVG */}
             <p className="text-sm text-center text-muted-foreground">
               Present this QR code at the event entrance
             </p>
