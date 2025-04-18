@@ -52,6 +52,7 @@ if (typeof window !== 'undefined') {
   // @ts-ignore
   window.stream = {
     Readable: class Readable {
+      _readableState: Record<string, unknown>;
       constructor() {
         this._readableState = {};
       }
@@ -62,6 +63,7 @@ if (typeof window !== 'undefined') {
       push() { return true; }
     },
     PassThrough: class PassThrough {
+      _transformState: Record<string, unknown>;
       constructor() {
         this._transformState = {};
       }
@@ -73,6 +75,7 @@ if (typeof window !== 'undefined') {
       read() { return null; }
     },
     Writable: class Writable {
+      _writableState: Record<string, unknown>;
       constructor() {
         this._writableState = {};
       }
@@ -82,6 +85,8 @@ if (typeof window !== 'undefined') {
       end() {}
     },
     Duplex: class Duplex {
+      _readableState: Record<string, unknown>;
+      _writableState: Record<string, unknown>;
       constructor() {
         this._readableState = {};
         this._writableState = {};
@@ -95,6 +100,7 @@ if (typeof window !== 'undefined') {
       push() { return true; }
     },
     Transform: class Transform {
+      _transformState: Record<string, unknown>;
       constructor() {
         this._transformState = {};
       }
@@ -175,16 +181,20 @@ if (typeof window !== 'undefined') {
     }
   };
   
-  // Additional polyfills for Node.js modules
-  // @ts-ignore
-  window.crypto = window.crypto || {
-    getRandomValues: function(buffer: Uint8Array) {
-      for (let i = 0; i < buffer.length; i++) {
-        buffer[i] = Math.floor(Math.random() * 256);
-      }
-      return buffer;
+  // FIX: Don't try to directly set window.crypto as it's a read-only property
+  // Instead, extend it if needed with additional methods that might be required
+  if (window.crypto) {
+    // Only add the getRandomValues method if it doesn't exist
+    if (!window.crypto.getRandomValues) {
+      // @ts-ignore - Extend the existing crypto object instead of replacing it
+      window.crypto.getRandomValues = function(buffer: Uint8Array) {
+        for (let i = 0; i < buffer.length; i++) {
+          buffer[i] = Math.floor(Math.random() * 256);
+        }
+        return buffer;
+      };
     }
-  };
+  }
 }
 
 export {}; // Make this a module

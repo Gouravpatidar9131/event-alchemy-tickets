@@ -11,6 +11,11 @@ import { useWallet } from '@solana/wallet-adapter-react';
 // Initialize Metaplex with browser local storage for uploads
 export const initializeMetaplex = (wallet: any) => {
   try {
+    if (!wallet) {
+      console.error("Wallet is not connected");
+      throw new Error("Wallet is not connected");
+    }
+    
     const connection = new Connection(clusterApiUrl("devnet"));
     const metaplex = Metaplex.make(connection)
       .use(walletAdapterIdentity(wallet));
@@ -31,6 +36,10 @@ export const createNftMetadata = (
   imageBuffer: ArrayBuffer
 ) => {
   try {
+    if (!imageBuffer || imageBuffer.byteLength === 0) {
+      throw new Error("Invalid image buffer");
+    }
+    
     const file = toMetaplexFile(imageBuffer, 'image.png');
     
     return {
@@ -68,6 +77,10 @@ export const createNFTTicket = async (
   ticketTypeId: string
 ) => {
   try {
+    if (!metaplex || !metadata) {
+      throw new Error("Invalid metaplex instance or metadata");
+    }
+    
     // Upload metadata (including image) to Bundlr
     const { uri } = await metaplex.nfts().uploadMetadata(metadata);
     
@@ -103,6 +116,10 @@ export const verifyNFTTicket = async (
   mintAddress: string
 ) => {
   try {
+    if (!metaplex || !mintAddress) {
+      throw new Error("Invalid metaplex instance or mint address");
+    }
+    
     const mint = new PublicKey(mintAddress);
     const nft = await metaplex.nfts().findByMint({ mintAddress: mint });
     
@@ -121,6 +138,10 @@ export const updateNFTTicketStatus = async (
   newStatus: string
 ) => {
   try {
+    if (!metaplex || !mintAddress) {
+      throw new Error("Invalid metaplex instance or mint address");
+    }
+    
     const mint = new PublicKey(mintAddress);
     const nft = await metaplex.nfts().findByMint({ mintAddress: mint });
     
