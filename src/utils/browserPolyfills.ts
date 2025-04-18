@@ -49,123 +49,93 @@ if (typeof window !== 'undefined') {
   });
   
   // Enhanced stream polyfill with more complete implementation
+  // Create prototype objects separately instead of using static properties
+  const readablePrototype = {
+    pipe: () => { return {} },
+    on: () => { return {} },
+    once: () => { return {} },
+    read: () => { return null },
+    push: () => { return true }
+  };
+  
+  const writablePrototype = {
+    on: () => { return {} },
+    once: () => { return {} },
+    write: () => { return true },
+    end: () => {}
+  };
+  
+  const duplexPrototype = {
+    ...readablePrototype,
+    ...writablePrototype
+  };
+  
+  const transformPrototype = {
+    ...duplexPrototype
+  };
+  
+  // Stream classes
+  class Readable {
+    _readableState: Record<string, unknown>;
+    constructor() {
+      this._readableState = {};
+      // Copy prototype methods to instance
+      Object.assign(this, readablePrototype);
+    }
+  }
+  
+  class PassThrough {
+    _transformState: Record<string, unknown>;
+    constructor() {
+      this._transformState = {};
+      // Copy prototype methods to instance
+      Object.assign(this, transformPrototype);
+    }
+  }
+  
+  class Writable {
+    _writableState: Record<string, unknown>;
+    constructor() {
+      this._writableState = {};
+      // Copy prototype methods to instance
+      Object.assign(this, writablePrototype);
+    }
+  }
+  
+  class Duplex {
+    _readableState: Record<string, unknown>;
+    _writableState: Record<string, unknown>;
+    constructor() {
+      this._readableState = {};
+      this._writableState = {};
+      // Copy prototype methods to instance
+      Object.assign(this, duplexPrototype);
+    }
+  }
+  
+  class Transform {
+    _transformState: Record<string, unknown>;
+    constructor() {
+      this._transformState = {};
+      // Copy prototype methods to instance
+      Object.assign(this, transformPrototype);
+    }
+  }
+  
+  // Manually set prototypes for each class
+  Object.setPrototypeOf(Readable.prototype, readablePrototype);
+  Object.setPrototypeOf(PassThrough.prototype, transformPrototype);
+  Object.setPrototypeOf(Writable.prototype, writablePrototype);
+  Object.setPrototypeOf(Duplex.prototype, duplexPrototype);
+  Object.setPrototypeOf(Transform.prototype, transformPrototype);
+  
   // @ts-ignore
   window.stream = {
-    Readable: class Readable {
-      _readableState: Record<string, unknown>;
-      // Adding missing prototype property
-      static get prototype() {
-        return {
-          pipe: () => { return {} },
-          on: () => { return {} },
-          once: () => { return {} },
-          read: () => { return null },
-          push: () => { return true }
-        };
-      }
-      constructor() {
-        this._readableState = {};
-      }
-      pipe() { return this; }
-      on() { return this; }
-      once() { return this; }
-      read() { return null; }
-      push() { return true; }
-    },
-    PassThrough: class PassThrough {
-      _transformState: Record<string, unknown>;
-      // Adding missing prototype property
-      static get prototype() {
-        return {
-          pipe: () => { return {} },
-          on: () => { return {} },
-          once: () => { return {} },
-          write: () => { return true },
-          end: () => {},
-          read: () => { return null }
-        };
-      }
-      constructor() {
-        this._transformState = {};
-      }
-      pipe() { return this; }
-      on() { return this; }
-      once() { return this; }
-      write() { return true; }
-      end() {}
-      read() { return null; }
-    },
-    Writable: class Writable {
-      _writableState: Record<string, unknown>;
-      // Adding missing prototype property
-      static get prototype() {
-        return {
-          on: () => { return {} },
-          once: () => { return {} },
-          write: () => { return true },
-          end: () => {}
-        };
-      }
-      constructor() {
-        this._writableState = {};
-      }
-      on() { return this; }
-      once() { return this; }
-      write() { return true; }
-      end() {}
-    },
-    Duplex: class Duplex {
-      _readableState: Record<string, unknown>;
-      _writableState: Record<string, unknown>;
-      // Adding missing prototype property
-      static get prototype() {
-        return {
-          pipe: () => { return {} },
-          on: () => { return {} },
-          once: () => { return {} },
-          write: () => { return true },
-          end: () => {},
-          read: () => { return null },
-          push: () => { return true }
-        };
-      }
-      constructor() {
-        this._readableState = {};
-        this._writableState = {};
-      }
-      pipe() { return this; }
-      on() { return this; }
-      once() { return this; }
-      write() { return true; }
-      end() {}
-      read() { return null; }
-      push() { return true; }
-    },
-    Transform: class Transform {
-      _transformState: Record<string, unknown>;
-      // Adding missing prototype property
-      static get prototype() {
-        return {
-          pipe: () => { return {} },
-          on: () => { return {} },
-          once: () => { return {} },
-          write: () => { return true },
-          end: () => {},
-          read: () => { return null },
-          push: () => { return true }
-        };
-      }
-      constructor() {
-        this._transformState = {};
-      }
-      pipe() { return this; }
-      on() { return this; }
-      once() { return this; }
-      write() { return true; }
-      end() {}
-      read() { return null; }
-      push() { return true; }
-    }
+    Readable,
+    PassThrough,
+    Writable,
+    Duplex,
+    Transform
   };
 
   // Enhanced http polyfill
@@ -185,9 +155,7 @@ if (typeof window !== 'undefined') {
     },
     createServer: () => ({
       listen: () => ({})
-    }),
-    // Add missing prototype property
-    prototype: {}
+    })
   };
 
   // Enhanced url polyfill
@@ -234,9 +202,7 @@ if (typeof window !== 'undefined') {
         console.error('Error formatting URL:', e);
         return '';
       }
-    },
-    // Add missing prototype property
-    prototype: {}
+    }
   };
   
   // FIX: Don't try to directly set window.crypto as it's a read-only property
@@ -254,12 +220,9 @@ if (typeof window !== 'undefined') {
     }
   }
 
-  // Add additional missing prototypes for fs and other Node modules
-  // that Metaplex might be trying to access
+  // Add additional missing polyfills for fs and other Node modules
   // @ts-ignore
   window.fs = {
-    prototype: {},
-    // Add basic fs functions if needed
     readFileSync: () => { throw new Error('fs.readFileSync is not supported in browser environment'); },
     writeFileSync: () => { throw new Error('fs.writeFileSync is not supported in browser environment'); }
   };
@@ -267,10 +230,9 @@ if (typeof window !== 'undefined') {
   // Add additional Node.js dependencies that Metaplex might need
   // @ts-ignore
   window.path = {
-    prototype: {},
-    join: (...parts) => parts.join('/').replace(/\/+/g, '/'),
-    resolve: (...parts) => parts.join('/').replace(/\/+/g, '/'),
-    dirname: (path) => {
+    join: (...parts: string[]) => parts.join('/').replace(/\/+/g, '/'),
+    resolve: (...parts: string[]) => parts.join('/').replace(/\/+/g, '/'),
+    dirname: (path: string) => {
       const parts = path.split('/');
       parts.pop();
       return parts.join('/') || '.';
