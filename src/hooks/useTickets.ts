@@ -138,8 +138,7 @@ export const useTickets = () => {
           tickets_sold: eventDetails.tickets_sold + 1
         })
         .eq('id', eventId)
-        .select()
-        .single();
+        .select();
         
       if (eventError) throw new Error(eventError.message);
       
@@ -212,15 +211,25 @@ export const useTickets = () => {
       if (error) throw new Error(error.message);
       
       // 4. Update the user's profile to increment events_attended
-      const { error: profileError } = await supabase
+      // Fix the RPC calls by using a direct update instead
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .update({
-          events_attended: supabase.rpc('increment', { x: 1 }),
-          loyalty_points: supabase.rpc('increment', { x: 10 })
-        })
-        .eq('id', ticket.owner_id);
+        .select('events_attended, loyalty_points')
+        .eq('id', ticket.owner_id)
+        .single();
+
+      if (!profileError && profileData) {
+        const eventsAttended = (profileData.events_attended || 0) + 1;
+        const loyaltyPoints = (profileData.loyalty_points || 0) + 10;
         
-      if (profileError) console.error('Error updating profile:', profileError);
+        await supabase
+          .from('profiles')
+          .update({
+            events_attended: eventsAttended,
+            loyalty_points: loyaltyPoints
+          })
+          .eq('id', ticket.owner_id);
+      }
       
       return data as Ticket;
     } catch (error) {

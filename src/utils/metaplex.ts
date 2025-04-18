@@ -2,23 +2,17 @@
 import {
   Metaplex,
   keypairIdentity,
-  bundlrStorage,
-  toMetaplexFile,
-  walletAdapterIdentity
+  walletAdapterIdentity,
+  toMetaplexFile
 } from "@metaplex-foundation/js";
 import { Connection, clusterApiUrl, Keypair, PublicKey } from "@solana/web3.js";
 import { useWallet } from '@solana/wallet-adapter-react';
 
-// Initialize Metaplex with Bundlr for storage
+// Initialize Metaplex with browser local storage for uploads
 export const initializeMetaplex = (wallet: any) => {
   const connection = new Connection(clusterApiUrl("devnet"));
   const metaplex = Metaplex.make(connection)
-    .use(walletAdapterIdentity(wallet))
-    .use(bundlrStorage({
-      address: 'https://devnet.bundlr.network',
-      providerUrl: clusterApiUrl("devnet"),
-      timeout: 60000,
-    }));
+    .use(walletAdapterIdentity(wallet));
   
   return metaplex;
 };
