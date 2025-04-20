@@ -1,5 +1,6 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/components/ui/use-toast';
@@ -31,10 +32,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, Plus, Trash2, Upload, Info } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, Upload, Info, Save } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useEventCreation } from '@/hooks/useEventCreation';
+import { toast } from '@/components/ui/sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/providers/AuthProvider';
 
 // Define form schema using Zod
 const eventFormSchema = z.object({
@@ -57,8 +62,20 @@ const ticketTypeSchema = z.object({
   description: z.string().optional(),
 });
 
+// Helper to convert date and time strings to ISO string
+const combineDateTime = (date: string, time: string): string => {
+  if (!date || !time) return new Date().toISOString();
+  const [year, month, day] = date.split('-').map(Number);
+  const [hours, minutes] = time.split(':').map(Number);
+  return new Date(year, month - 1, day, hours, minutes).toISOString();
+};
+
 const CreateEventPage = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [currentTab, setCurrentTab] = useState('details');
+  const [isDraft, setIsDraft] = useState(false);
   const [ticketTypes, setTicketTypes] = useState([
     { name: 'General Admission', price: '0.5', quantity: '100', description: 'Standard entry to the event' }
   ]);
@@ -66,6 +83,8 @@ const CreateEventPage = () => {
   const [resaleAllowed, setResaleAllowed] = useState(true);
   const [maxResalePrice, setMaxResalePrice] = useState('');
   const [previewImage, setPreviewImage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { createEvent, isCreating } = useEventCreation();
   
   // Set up form with react-hook-form and zod validation
   const form = useForm<z.infer<typeof eventFormSchema>>({
@@ -120,36 +139,201 @@ const CreateEventPage = () => {
       // Here we just create a local URL for preview
       const imageUrl = URL.createObjectURL(file);
       setPreviewImage(imageUrl);
-      form.setValue('coverImage', file.name);
+      form.setValue('coverImage', imageUrl); // Using the preview URL for now
     }
   };
 
-  const onSubmit = (data: z.infer<typeof eventFormSchema>) => {
-    // Validate ticket types
-    const ticketValidation = ticketTypes.every(ticket => 
-      ticket.name && ticket.price && ticket.quantity
-    );
-
-    if (!ticketValidation) {
-      toast({
-        title: "Invalid Ticket Types",
-        description: "Please complete all required ticket information.",
-        variant: "destructive",
-      });
-      return;
+  const saveEventDraft = async () => {
+    // Validate the current tab
+    if (currentTab === 'details') {
+      const isValid = await form.trigger(['title', 'description']);
+      if (!isValid) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in at least the title and description to save as draft",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
-    // In a real app, this would submit to Solana blockchain via a transaction
-    console.log("Event Data:", data);
-    console.log("Ticket Types:", ticketTypes);
-    console.log("Royalty Percentage:", royaltyPercentage);
-    console.log("Resale Allowed:", resaleAllowed);
-    console.log("Max Resale Price:", maxResalePrice);
+    // Save to local storage as draft
+    const formData = form.getValues();
+    const draftData = {
+      ...formData,
+      ticketTypes,
+      royaltyPercentage,
+      resaleAllowed,
+      maxResalePrice,
+      previewImage,
+      lastUpdated: new Date().toISOString(),
+    };
 
+    localStorage.setItem('eventDraft', JSON.stringify(draftData));
+    setIsDraft(true);
+    
     toast({
-      title: "Event Created!",
-      description: "Your event has been created (simulated).",
+      title: "Draft Saved",
+      description: "Your event has been saved as a draft",
     });
+  };
+
+  const loadDraftEvent = () => {
+    const draftData = localStorage.getItem('eventDraft');
+    if (draftData) {
+      try {
+        const parsedDraft = JSON.parse(draftData);
+        // Fill the form with draft data
+        Object.entries(parsedDraft).forEach(([key, value]) => {
+          if (key in form.getValues() && typeof value === 'string') {
+            form.setValue(key as any, value);
+          }
+        });
+        
+        if (parsedDraft.ticketTypes) {
+          setTicketTypes(parsedDraft.ticketTypes);
+        }
+        
+        if (parsedDraft.royaltyPercentage) {
+          setRoyaltyPercentage(parsedDraft.royaltyPercentage);
+        }
+        
+        if ('resaleAllowed' in parsedDraft) {
+          setResaleAllowed(parsedDraft.resaleAllowed);
+        }
+        
+        if (parsedDraft.maxResalePrice) {
+          setMaxResalePrice(parsedDraft.maxResalePrice);
+        }
+        
+        if (parsedDraft.previewImage) {
+          setPreviewImage(parsedDraft.previewImage);
+        }
+
+        setIsDraft(true);
+        
+        toast({
+          title: "Draft Loaded",
+          description: "Your draft event has been loaded",
+        });
+      } catch (error) {
+        console.error('Error loading draft:', error);
+        toast({
+          title: "Error Loading Draft",
+          description: "There was an error loading your draft",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Load draft on initial render
+  useEffect(() => {
+    loadDraftEvent();
+  }, []);
+
+  const navigateToTab = (tab: string) => {
+    // Validate before changing tabs
+    if (currentTab === 'details' && tab === 'tickets') {
+      form.trigger(['title', 'description', 'date', 'time', 'endTime', 'location', 'category', 'organizer'])
+        .then(isValid => {
+          if (isValid) {
+            setCurrentTab(tab);
+          } else {
+            toast({
+              title: "Validation Error",
+              description: "Please fill in all required fields before continuing",
+              variant: "destructive",
+            });
+          }
+        });
+    } else if (currentTab === 'tickets' && tab === 'royalties') {
+      // Validate ticket types
+      const ticketValidation = ticketTypes.every(ticket => 
+        ticket.name && ticket.price && ticket.quantity
+      );
+
+      if (ticketValidation) {
+        setCurrentTab(tab);
+      } else {
+        toast({
+          title: "Invalid Ticket Types",
+          description: "Please complete all required ticket information",
+          variant: "destructive",
+        });
+      }
+    } else if (tab === 'details' && currentTab === 'tickets') {
+      setCurrentTab(tab);
+    } else {
+      setCurrentTab(tab);
+    }
+  };
+
+  const onSubmit = async (data: z.infer<typeof eventFormSchema>) => {
+    try {
+      setIsSubmitting(true);
+      
+      // Validate ticket types
+      const ticketValidation = ticketTypes.every(ticket => 
+        ticket.name && ticket.price && ticket.quantity
+      );
+
+      if (!ticketValidation) {
+        toast({
+          title: "Invalid Ticket Types",
+          description: "Please complete all required ticket information.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Calculate total tickets from all ticket types
+      const totalTickets = ticketTypes.reduce((sum, ticket) => sum + Number(ticket.quantity), 0);
+      
+      // Use the price from the first ticket type for now (in a real app, you'd handle multiple price tiers)
+      const mainPrice = parseFloat(ticketTypes[0].price);
+      
+      // Combine date and time for the event date
+      const eventDateTime = combineDateTime(data.date, data.time);
+      
+      // Prepare event data for creation
+      const eventData = {
+        title: data.title,
+        description: data.description,
+        date: eventDateTime,
+        location: data.location,
+        price: mainPrice,
+        total_tickets: totalTickets,
+        image_url: previewImage || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f', // Default image if none provided
+      };
+
+      // Submit the event to the database
+      const success = await createEvent(eventData);
+      
+      if (success) {
+        // Clear the draft from local storage
+        localStorage.removeItem('eventDraft');
+        
+        // Show success message
+        toast({
+          title: "Event Created!",
+          description: "Your event has been created successfully.",
+        });
+        
+        // Redirect to dashboard
+        navigate('/dashboard');
+      }
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      toast({
+        title: "Error Creating Event",
+        description: error.message || "There was an error creating your event",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -162,7 +346,7 @@ const CreateEventPage = () => {
             Create an event with NFT tickets on the Solana blockchain.
           </p>
           
-          <Tabs defaultValue="details">
+          <Tabs value={currentTab} onValueChange={navigateToTab}>
             <TabsList className="w-full mb-8 glass-card">
               <TabsTrigger value="details" className="flex-1">Event Details</TabsTrigger>
               <TabsTrigger value="tickets" className="flex-1">Ticket NFTs</TabsTrigger>
@@ -380,10 +564,14 @@ const CreateEventPage = () => {
                       />
                     </CardContent>
                     <CardFooter className="flex justify-between">
-                      <Button variant="outline" type="button">
+                      <Button variant="outline" type="button" onClick={saveEventDraft}>
+                        <Save className="mr-2 h-4 w-4" />
                         Save Draft
                       </Button>
-                      <Button type="button" onClick={() => form.trigger(['title', 'description', 'date', 'time', 'endTime', 'location', 'category', 'organizer'])}>
+                      <Button 
+                        type="button" 
+                        onClick={() => navigateToTab('tickets')}
+                      >
                         Continue to Tickets
                       </Button>
                     </CardFooter>
@@ -491,10 +679,17 @@ const CreateEventPage = () => {
                       </Button>
                     </CardContent>
                     <CardFooter className="flex justify-between">
-                      <Button variant="outline" type="button">
+                      <Button 
+                        variant="outline" 
+                        type="button" 
+                        onClick={() => navigateToTab('details')}
+                      >
                         Back to Details
                       </Button>
-                      <Button type="button">
+                      <Button 
+                        type="button" 
+                        onClick={() => navigateToTab('royalties')}
+                      >
                         Continue to Royalties
                       </Button>
                     </CardFooter>
@@ -595,8 +790,12 @@ const CreateEventPage = () => {
                       </div>
                     </CardContent>
                     <CardFooter className="flex flex-col space-y-4">
-                      <Button className="w-full bg-solana-gradient hover:opacity-90 text-white" type="submit">
-                        Create Event
+                      <Button 
+                        className="w-full bg-solana-gradient hover:opacity-90 text-white" 
+                        type="submit"
+                        disabled={isSubmitting || isCreating}
+                      >
+                        {isSubmitting || isCreating ? 'Creating Event...' : 'Create Event'}
                       </Button>
                       <p className="text-xs text-muted-foreground text-center">
                         By creating this event, you'll initiate a transaction on the Solana blockchain.

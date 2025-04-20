@@ -17,7 +17,7 @@ export const useEventCreation = () => {
     location: string;
     price: number;
     total_tickets: number;
-    image_url: string; // Changed from optional to required to match the Event type
+    image_url: string;
   }) => {
     if (!user) {
       toast({
@@ -25,7 +25,7 @@ export const useEventCreation = () => {
         description: 'Please sign in to create an event',
         variant: 'destructive',
       });
-      return;
+      return false;
     }
 
     setIsCreating(true);
