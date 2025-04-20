@@ -30,12 +30,8 @@ export const useEventCreation = () => {
 
     setIsCreating(true);
     try {
-      await createEventMutation.mutateAsync({
-        ...eventData,
-        creator_id: user.id,
-        tickets_sold: 0,
-        is_published: false
-      });
+      // Pass the data without creator_id as it's handled in the createEvent function
+      await createEventMutation.mutateAsync(eventData);
 
       toast({
         title: 'Event created',

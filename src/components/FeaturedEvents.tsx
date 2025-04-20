@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const FeaturedEvents = () => {
   const { useEventsQuery } = useEvents();
-  const { data: events = [] } = useEventsQuery();
+  const { data: events = [], refetch } = useEventsQuery();
 
   // Get top 4 published events, sorted by date
   const featuredEvents = events
@@ -25,6 +25,7 @@ const FeaturedEvents = () => {
       imageUrl: event.image_url || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f',
       price: `${event.price} SOL`,
       category: 'Technology', // You might want to add a category field to your events table
+      // Explicitly cast as one of the allowed types
       availability: event.tickets_sold >= event.total_tickets ? 'sold out' : 
                    event.tickets_sold >= event.total_tickets * 0.8 ? 'limited' : 'available'
     }));
@@ -42,7 +43,7 @@ const FeaturedEvents = () => {
         },
         () => {
           // Refetch events when changes occur
-          useEventsQuery().refetch();
+          refetch();
         }
       )
       .subscribe();
@@ -50,7 +51,7 @@ const FeaturedEvents = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [refetch]);
 
   return (
     <section className="py-20 px-4">
