@@ -43,24 +43,24 @@ if (typeof window !== 'undefined') {
 
     // Implement static from to match Uint8Array.from signatures
     static from(
-      arrayLike: ArrayLike<number> | Iterable<number> | ArrayBufferLike, 
-      mapfn?: (v: number, k: number) => number,
+      arrayLike: ArrayLike<number> | Iterable<number> | string,
+      mapfn?: ((v: number, k: number) => number) | string,
       thisArg?: any
     ): MockBuffer {
       // Handle string with encoding as a special case
       if (typeof arrayLike === 'string') {
-        const arg = mapfn as unknown as string;
-        if (arg === 'hex') {
+        const encoding = mapfn as string;
+        if (encoding === 'hex') {
           return this.fromHexString(arrayLike);
         }
         // If no encoding or different encoding, convert string to array of char codes
-        const strArray = new Uint8Array(Array.from(arrayLike).map(c => c.charCodeAt(0)));
+        const strArray = new Uint8Array(Array.from(arrayLike as string).map(c => c.charCodeAt(0)));
         return new MockBuffer(strArray);
       }
 
       // Otherwise handle like a regular Uint8Array
       return new MockBuffer(
-        mapfn 
+        mapfn && typeof mapfn === 'function'
           ? Array.from(arrayLike as ArrayLike<number>, mapfn, thisArg)
           : Array.from(arrayLike as ArrayLike<number>)
       );
