@@ -5,7 +5,7 @@ if (typeof window !== 'undefined') {
   // @ts-ignore
   window.global = window;
   
-  // Provide basic process object
+  // Provide basic process object with required OpenSSL version
   // @ts-ignore
   window.process = { 
     env: {},
@@ -17,18 +17,16 @@ if (typeof window !== 'undefined') {
       ares: '0.0.0',
       uv: '0.0.0',
       zlib: '0.0.0',
-      modules: '0.0.0'
+      modules: '0.0.0',
+      openssl: '1.1.1', // Add OpenSSL version
     },
     nextTick: (cb: Function) => setTimeout(cb, 0)
   };
 
-  // Mock Buffer API with proper types
+  // Mock Buffer API
   class MockBuffer extends Uint8Array {
-    // Properly override static methods to match TypeScript definitions
-    static from(arrayLike: ArrayLike<number>): Uint8Array;
-    static from<T>(arrayLike: ArrayLike<T>, mapfn: (v: T, k: number) => number, thisArg?: any): Uint8Array;
-    static from(arrayLike: any, mapfn?: any, thisArg?: any): Uint8Array {
-      if (typeof arrayLike === 'string' && mapfn === 'hex') {
+    static from(arrayLike: ArrayLike<number> | string, encoding?: string): MockBuffer {
+      if (typeof arrayLike === 'string' && encoding === 'hex') {
         // Handle hex strings
         const hexStr = arrayLike.toString();
         const result = new MockBuffer(hexStr.length / 2);
@@ -37,7 +35,7 @@ if (typeof window !== 'undefined') {
         }
         return result;
       }
-      return new MockBuffer(arrayLike);
+      return new MockBuffer(arrayLike as ArrayLike<number>);
     }
 
     static alloc(size: number): MockBuffer {

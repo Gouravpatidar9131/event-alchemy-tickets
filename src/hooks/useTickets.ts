@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -94,12 +93,14 @@ export const useTickets = () => {
     eventDetails,
     ticketType,
     price,
+    currency,
     imageBuffer
   }: {
     eventId: string;
     eventDetails: any;
     ticketType: string;
     price: number;
+    currency: 'SOL' | 'MONAD';
     imageBuffer: ArrayBuffer;
   }) => {
     if (!user) throw new Error('You must be logged in to purchase a ticket');
@@ -107,13 +108,9 @@ export const useTickets = () => {
     
     try {
       console.log("Purchasing ticket for event:", eventId);
-      console.log("Ticket details:", { ticketType, price });
+      console.log("Ticket details:", { ticketType, price, currency });
       
-      // Create a mock NFT ticket using our mock metaplex implementation
-      const metaplex = initializeMetaplex();
-      
-      // In a production app, we would mint an actual NFT here
-      // For now, we create a mock ticket record in the database
+      // Create a mock ticket record in the database
       const ticketData = {
         event_id: eventId,
         owner_id: user.id,
@@ -122,7 +119,8 @@ export const useTickets = () => {
         status: 'active',
         purchase_price: price,
         metadata: {
-          ticket_type: ticketType
+          ticket_type: ticketType,
+          currency: currency
         }
       };
       

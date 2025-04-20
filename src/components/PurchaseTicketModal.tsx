@@ -12,7 +12,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Ticket, Loader2 } from 'lucide-react';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Ticket, Loader2, Coins } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,6 +31,9 @@ interface PurchaseTicketModalProps {
   ticketQuantity: number;
 }
 
+const NETWORK_FEE = 0.001;
+const MONAD_TO_SOL_RATE = 2; // 1 SOL = 2 MONAD (example rate)
+
 const PurchaseTicketModal = ({
   isOpen,
   onClose,
@@ -32,6 +42,7 @@ const PurchaseTicketModal = ({
   ticketQuantity,
 }: PurchaseTicketModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState('SOL');
   const { connected, publicKey } = useWallet();
   const { user } = useAuth();
   const { purchaseTicketMutation } = useTickets();
@@ -42,7 +53,9 @@ const PurchaseTicketModal = ({
     price: event?.price || 0.5
   };
   
-  const totalPrice = ticketType ? parseFloat(ticketType.price) * ticketQuantity : 0;
+  const basePrice = ticketType ? parseFloat(ticketType.price) * ticketQuantity : 0;
+  const totalPriceInSol = basePrice + NETWORK_FEE;
+  const totalPriceInMonad = totalPriceInSol * MONAD_TO_SOL_RATE;
 
   const handlePurchase = async () => {
     if (!user) {
@@ -75,7 +88,6 @@ const PurchaseTicketModal = ({
         view[i] = i % 256;
       }
       
-      // Try to get the event image
       let imageBuffer: ArrayBuffer = fallbackBuffer;
       
       if (event.image_url) {
@@ -94,37 +106,28 @@ const PurchaseTicketModal = ({
         }
       }
       
-      console.log("Using image buffer of size:", imageBuffer.byteLength);
-      
-      // Purchase the ticket (mint NFT) with error handling
-      try {
-        await purchaseTicketMutation.mutateAsync({
-          eventId: event.id,
-          eventDetails: {
-            ...event,
-            title: event.title || 'Event',
-            date: event.date || new Date().toISOString(),
-            location: event.location || 'Virtual',
-            ticketType: ticketType.name || 'General Admission',
-            tickets_sold: event.tickets_sold || 0,
-          },
+      await purchaseTicketMutation.mutateAsync({
+        eventId: event.id,
+        eventDetails: {
+          ...event,
+          title: event.title || 'Event',
+          date: event.date || new Date().toISOString(),
+          location: event.location || 'Virtual',
           ticketType: ticketType.name || 'General Admission',
-          price: totalPrice,
-          imageBuffer
-        });
-        
-        toast('Ticket purchased successfully!', {
-          description: 'Your ticket has been added to your collection.'
-        });
-        
-        onClose();
-        navigate('/dashboard');
-      } catch (purchaseError: any) {
-        console.error("Purchase ticket error:", purchaseError);
-        toast('Failed to purchase ticket', {
-          description: purchaseError.message || 'Transaction failed. Please try again.',
-        });
-      }
+          tickets_sold: event.tickets_sold || 0,
+        },
+        ticketType: ticketType.name || 'General Admission',
+        price: selectedCurrency === 'SOL' ? totalPriceInSol : totalPriceInMonad,
+        currency: selectedCurrency,
+        imageBuffer
+      });
+      
+      toast('Ticket purchased successfully!', {
+        description: 'Your ticket has been added to your collection.'
+      });
+      
+      onClose();
+      navigate('/dashboard');
     } catch (error: any) {
       console.error('Error in purchase process:', error);
       toast('Failed to purchase ticket', {
@@ -157,15 +160,33 @@ const PurchaseTicketModal = ({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Price per Ticket:</span>
-              <span>{ticketType?.price} SOL</span>
+              <span>{ticketType?.price} {selectedCurrency}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Network Fee:</span>
-              <span>0.001 SOL</span>
+              <span>{NETWORK_FEE} {selectedCurrency}</span>
             </div>
+            
+            <div className="pt-2 pb-3">
+              <Select
+                value={selectedCurrency}
+                onValueChange={setSelectedCurrency}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SOL">Solana (SOL)</SelectItem>
+                  <SelectItem value="MONAD">Monad (MONAD)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
             <div className="border-t border-border pt-3 flex justify-between font-bold">
               <span>Total:</span>
-              <span>{(totalPrice + 0.001).toFixed(3)} SOL</span>
+              <span>
+                {selectedCurrency === 'SOL' ? totalPriceInSol : totalPriceInMonad.toFixed(3)} {selectedCurrency}
+              </span>
             </div>
           </div>
           
@@ -194,8 +215,8 @@ const PurchaseTicketModal = ({
               </>
             ) : (
               <>
-                <Ticket className="h-4 w-4 mr-2" />
-                Buy NFT Ticket
+                <Coins className="h-4 w-4 mr-2" />
+                Pay with {selectedCurrency}
               </>
             )}
           </Button>
