@@ -1,4 +1,3 @@
-
 // Polyfill for Node.js modules in browser environments
 if (typeof window !== 'undefined') {
   // Make window.global available
@@ -23,21 +22,48 @@ if (typeof window !== 'undefined') {
     nextTick: (cb: Function) => setTimeout(cb, 0)
   };
 
-  // Mock Buffer API with proper TypeScript typings
+  // Implement a more compatible MockBuffer class
   class MockBuffer extends Uint8Array {
-    // Modified to match Uint8Array's static from method signature more closely
-    static from(arrayLike: ArrayLike<number> | string, mapfnOrEncoding?: ((v: number, k: number) => number) | string): MockBuffer {
-      if (typeof arrayLike === 'string' && typeof mapfnOrEncoding === 'string' && mapfnOrEncoding === 'hex') {
-        // Handle hex strings
-        const hexStr = arrayLike.toString();
-        const result = new MockBuffer(hexStr.length / 2);
-        for (let i = 0; i < hexStr.length; i += 2) {
-          result[i / 2] = parseInt(hexStr.substring(i, i + 2), 16);
-        }
-        return result;
+    // Implementing a constructor that matches Uint8Array
+    constructor(
+      length: number | ArrayBufferLike | ArrayLike<number> | Iterable<number> | MockBuffer
+    ) {
+      super(length as any);
+    }
+
+    // Helper method for handling hex strings specifically
+    private static fromHexString(hexString: string): MockBuffer {
+      const str = hexString.toString();
+      const result = new MockBuffer(str.length / 2);
+      for (let i = 0; i < str.length; i += 2) {
+        result[i / 2] = parseInt(str.substring(i, i + 2), 16);
       }
-      // Default case, delegate to Uint8Array.from
-      return new MockBuffer(Array.from(arrayLike as ArrayLike<number>));
+      return result;
+    }
+
+    // Implement static from to match Uint8Array.from signatures
+    static from(
+      arrayLike: ArrayLike<number> | Iterable<number> | ArrayBufferLike, 
+      mapfn?: (v: number, k: number) => number,
+      thisArg?: any
+    ): MockBuffer {
+      // Handle string with encoding as a special case
+      if (typeof arrayLike === 'string') {
+        const arg = mapfn as unknown as string;
+        if (arg === 'hex') {
+          return this.fromHexString(arrayLike);
+        }
+        // If no encoding or different encoding, convert string to array of char codes
+        const strArray = new Uint8Array(Array.from(arrayLike).map(c => c.charCodeAt(0)));
+        return new MockBuffer(strArray);
+      }
+
+      // Otherwise handle like a regular Uint8Array
+      return new MockBuffer(
+        mapfn 
+          ? Array.from(arrayLike as ArrayLike<number>, mapfn, thisArg)
+          : Array.from(arrayLike as ArrayLike<number>)
+      );
     }
 
     static alloc(size: number): MockBuffer {
