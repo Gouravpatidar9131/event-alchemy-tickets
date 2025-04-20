@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import EventCard from '@/components/EventCard';
@@ -13,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Search, SlidersHorizontal } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Mock data for events (expanded from FeaturedEvents)
 const allEvents = [
@@ -110,24 +110,80 @@ const EventsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all'); // Changed from empty string to 'all'
   const [availabilityFilter, setAvailabilityFilter] = useState('all'); // Changed from empty string to 'all'
+  const [filteredEvents, setFilteredEvents] = useState(allEvents);
 
   // Filter events based on search term and filters
-  const filteredEvents = allEvents.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          event.location.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter; // Updated condition
-    
-    const matchesAvailability = availabilityFilter === 'all' || // Updated condition
-                               (availabilityFilter === 'available' && event.availability === 'available') ||
-                               (availabilityFilter === 'limited' && event.availability === 'limited') ||
-                               (availabilityFilter === 'sold out' && event.availability === 'sold out');
-    
-    return matchesSearch && matchesCategory && matchesAvailability;
-  });
+  const filterEvents = () => {
+    const matchesSearch = (event: any) =>
+      event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.location.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesCategory = (event: any) =>
+      categoryFilter === 'all' || event.category === categoryFilter;
+
+    const matchesAvailability = (event: any) =>
+      availabilityFilter === 'all' ||
+      (availabilityFilter === 'available' && event.availability === 'available') ||
+      (availabilityFilter === 'limited' && event.availability === 'limited') ||
+      (availabilityFilter === 'sold out' && event.availability === 'sold out');
+
+    const newFilteredEvents = allEvents.filter(
+      (event: any) => matchesSearch(event) && matchesCategory(event) && matchesAvailability(event)
+    );
+
+    setFilteredEvents(newFilteredEvents);
+  };
 
   // Extract unique categories for filter dropdown
   const categories = [...new Set(allEvents.map(event => event.category))];
+
+  useEffect(() => {
+    // Subscribe to real-time updates
+    const channel = supabase.channel('events-page-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'events'
+        },
+        async (payload) => {
+          console.log('Real-time update received in Events Page:', payload);
+          
+          // Auto-refresh the events list when changes occur
+          const updatedEvents = allEvents.slice(); // Create a copy of the events array
+          
+          if (payload.eventType === 'INSERT' && payload.new) {
+            // Add the new event to the list
+            updatedEvents.push(payload.new);
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            // Remove the deleted event from the list
+            const index = updatedEvents.findIndex(event => event.id === payload.old.id);
+            if (index !== -1) {
+              updatedEvents.splice(index, 1);
+            }
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            // Update the modified event in the list
+            const index = updatedEvents.findIndex(event => event.id === payload.new.id);
+            if (index !== -1) {
+              updatedEvents[index] = payload.new;
+            }
+          }
+
+          // Update the filtered events
+          setFilteredEvents(updatedEvents);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [allEvents]);
+
+  useEffect(() => {
+    filterEvents();
+  }, [searchTerm, categoryFilter, availabilityFilter]);
 
   return (
     <div className="min-h-screen flex flex-col">

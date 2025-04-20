@@ -6,10 +6,12 @@ import EventCard from './EventCard';
 import { Link } from 'react-router-dom';
 import { useEvents } from '@/hooks/useEvents';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
 const FeaturedEvents = () => {
   const { useEventsQuery } = useEvents();
   const { data: events = [], refetch } = useEventsQuery();
+  const { toast } = useToast();
 
   // Get top 4 published events, sorted by date
   const featuredEvents = events
@@ -35,15 +37,14 @@ const FeaturedEvents = () => {
         location: event.location,
         imageUrl: event.image_url || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f',
         price: `${event.price} SOL`,
-        category: 'Technology', // You might want to add a category field to your events table
+        category: 'Technology',
         availability
       };
     });
 
   useEffect(() => {
-    // Subscribe to realtime updates for the events table
-    const channel = supabase
-      .channel('events-changes')
+    // Enable REPLICA IDENTITY FULL for the events table to get complete row data
+    const channel = supabase.channel('events-changes')
       .on(
         'postgres_changes',
         {
@@ -51,9 +52,19 @@ const FeaturedEvents = () => {
           schema: 'public',
           table: 'events'
         },
-        () => {
+        async (payload) => {
+          console.log('Real-time update received:', payload);
+          
           // Refetch events when changes occur
-          refetch();
+          await refetch();
+
+          // Show toast notification for new events
+          if (payload.eventType === 'INSERT') {
+            toast({
+              title: 'New Event Added',
+              description: `"${payload.new.title}" has been added to the events list.`,
+            });
+          }
         }
       )
       .subscribe();
@@ -61,7 +72,7 @@ const FeaturedEvents = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [refetch, toast]);
 
   return (
     <section className="py-20 px-4">

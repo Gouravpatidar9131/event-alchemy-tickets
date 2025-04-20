@@ -1,14 +1,15 @@
-
 import { useState } from 'react';
 import { useEvents } from './useEvents';
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 export const useEventCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
   const { createEventMutation } = useEvents();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const createEvent = async (eventData: {
     title: string;
@@ -30,8 +31,9 @@ export const useEventCreation = () => {
 
     setIsCreating(true);
     try {
-      // Pass the data without creator_id as it's handled in the createEvent function
       await createEventMutation.mutateAsync(eventData);
+
+      await queryClient.invalidateQueries({ queryKey: ['events'] });
 
       toast({
         title: 'Event created',
