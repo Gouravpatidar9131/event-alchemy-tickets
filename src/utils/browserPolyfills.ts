@@ -23,10 +23,11 @@ if (typeof window !== 'undefined') {
     nextTick: (cb: Function) => setTimeout(cb, 0)
   };
 
-  // Mock Buffer API
+  // Mock Buffer API with proper TypeScript typings
   class MockBuffer extends Uint8Array {
-    static from(arrayLike: ArrayLike<number> | string, encoding?: string): MockBuffer {
-      if (typeof arrayLike === 'string' && encoding === 'hex') {
+    // Modified to match Uint8Array's static from method signature more closely
+    static from(arrayLike: ArrayLike<number> | string, mapfnOrEncoding?: ((v: number, k: number) => number) | string): MockBuffer {
+      if (typeof arrayLike === 'string' && typeof mapfnOrEncoding === 'string' && mapfnOrEncoding === 'hex') {
         // Handle hex strings
         const hexStr = arrayLike.toString();
         const result = new MockBuffer(hexStr.length / 2);
@@ -35,7 +36,8 @@ if (typeof window !== 'undefined') {
         }
         return result;
       }
-      return new MockBuffer(arrayLike as ArrayLike<number>);
+      // Default case, delegate to Uint8Array.from
+      return new MockBuffer(Array.from(arrayLike as ArrayLike<number>));
     }
 
     static alloc(size: number): MockBuffer {

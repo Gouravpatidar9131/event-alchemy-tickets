@@ -34,6 +34,8 @@ interface PurchaseTicketModalProps {
 const NETWORK_FEE = 0.001;
 const MONAD_TO_SOL_RATE = 2; // 1 SOL = 2 MONAD (example rate)
 
+type CurrencyType = 'SOL' | 'MONAD';
+
 const PurchaseTicketModal = ({
   isOpen,
   onClose,
@@ -42,7 +44,7 @@ const PurchaseTicketModal = ({
   ticketQuantity,
 }: PurchaseTicketModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState('SOL');
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>('SOL');
   const { connected, publicKey } = useWallet();
   const { user } = useAuth();
   const { purchaseTicketMutation } = useTickets();
@@ -138,6 +140,11 @@ const PurchaseTicketModal = ({
     }
   };
 
+  // Handle currency change with proper type assertion
+  const handleCurrencyChange = (value: string) => {
+    setSelectedCurrency(value as CurrencyType);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
@@ -170,7 +177,7 @@ const PurchaseTicketModal = ({
             <div className="pt-2 pb-3">
               <Select
                 value={selectedCurrency}
-                onValueChange={setSelectedCurrency}
+                onValueChange={handleCurrencyChange}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select currency" />
