@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -13,107 +14,55 @@ import {
 } from '@/components/ui/select';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-
-// Mock data for events (expanded from FeaturedEvents)
-const allEvents = [
-  {
-    id: '1',
-    title: 'Solana Summer Hackathon',
-    date: 'June 10, 2025',
-    time: '9:00 AM - 6:00 PM',
-    location: 'Virtual Event',
-    imageUrl: 'https://images.unsplash.com/photo-1591522811280-a8759970b03f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-    price: '0.5 SOL',
-    category: 'Technology',
-    availability: 'available' as const,
-  },
-  {
-    id: '2',
-    title: 'Metaverse Music Festival',
-    date: 'July 5, 2025',
-    time: '8:00 PM - 2:00 AM',
-    location: 'Decentraland',
-    imageUrl: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-    price: '1.2 SOL',
-    category: 'Music',
-    availability: 'limited' as const,
-  },
-  {
-    id: '3',
-    title: 'NFT Art Exhibition',
-    date: 'August 15, 2025',
-    time: '10:00 AM - 6:00 PM',
-    location: 'Miami, FL',
-    imageUrl: 'https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1744&q=80',
-    price: '0.8 SOL',
-    category: 'Art',
-    availability: 'available' as const,
-  },
-  {
-    id: '4',
-    title: 'Crypto Economics Summit',
-    date: 'September 20, 2025',
-    time: '9:00 AM - 5:00 PM',
-    location: 'San Francisco, CA',
-    imageUrl: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1932&q=80',
-    price: '1.5 SOL',
-    category: 'Finance',
-    availability: 'sold out' as const,
-  },
-  {
-    id: '5',
-    title: 'Blockchain Gaming Conference',
-    date: 'October 5, 2025',
-    time: '10:00 AM - 6:00 PM',
-    location: 'Tokyo, Japan',
-    imageUrl: 'https://images.unsplash.com/photo-1511882150382-421056c89033?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1742&q=80',
-    price: '2.0 SOL',
-    category: 'Gaming',
-    availability: 'available' as const,
-  },
-  {
-    id: '6',
-    title: 'DeFi Developer Workshop',
-    date: 'November 12, 2025',
-    time: '9:00 AM - 5:00 PM',
-    location: 'Berlin, Germany',
-    imageUrl: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-    price: '0.7 SOL',
-    category: 'Technology',
-    availability: 'limited' as const,
-  },
-  {
-    id: '7',
-    title: 'Web3 Startup Pitch Competition',
-    date: 'December 3, 2025',
-    time: '2:00 PM - 8:00 PM',
-    location: 'London, UK',
-    imageUrl: 'https://images.unsplash.com/photo-1559223607-b4d0555ae227?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-    price: '1.0 SOL',
-    category: 'Business',
-    availability: 'available' as const,
-  },
-  {
-    id: '8',
-    title: 'Solana New Year Gala',
-    date: 'December 31, 2025',
-    time: '8:00 PM - 2:00 AM',
-    location: 'New York, NY',
-    imageUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-    price: '3.0 SOL',
-    category: 'Networking',
-    availability: 'limited' as const,
-  }
-];
+import { useToast } from '@/components/ui/use-toast';
+import { useEvents } from '@/hooks/useEvents';
+import { format } from 'date-fns';
 
 const EventsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all'); // Changed from empty string to 'all'
-  const [availabilityFilter, setAvailabilityFilter] = useState('all'); // Changed from empty string to 'all'
-  const [filteredEvents, setFilteredEvents] = useState(allEvents);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [availabilityFilter, setAvailabilityFilter] = useState('all');
+  const [filteredEvents, setFilteredEvents] = useState<any[]>([]);
+  const { toast } = useToast();
+  const { useEventsQuery } = useEvents();
+  const { data: eventsData = [], isLoading, refetch } = useEventsQuery();
+
+  // Process events data to match the EventCard component format
+  const processEvents = (events: any[]) => {
+    return events
+      .filter(event => event.is_published)
+      .map(event => {
+        // Determine availability based on ticket sales
+        let availability: "sold out" | "limited" | "available";
+        if (event.tickets_sold >= event.total_tickets) {
+          availability = "sold out";
+        } else if (event.tickets_sold >= event.total_tickets * 0.8) {
+          availability = "limited";
+        } else {
+          availability = "available";
+        }
+
+        // Format date and time for display
+        const eventDate = new Date(event.date);
+        
+        return {
+          id: event.id,
+          title: event.title,
+          date: format(eventDate, 'PP'),
+          time: format(eventDate, 'p'),
+          location: event.location,
+          imageUrl: event.image_url || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f',
+          price: `${event.price} SOL`,
+          category: event.category || 'Technology', // Default category if not specified
+          availability
+        };
+      });
+  };
 
   // Filter events based on search term and filters
   const filterEvents = () => {
+    const allEvents = processEvents(eventsData);
+    
     const matchesSearch = (event: any) =>
       event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.location.toLowerCase().includes(searchTerm.toLowerCase());
@@ -135,7 +84,9 @@ const EventsPage = () => {
   };
 
   // Extract unique categories for filter dropdown
-  const categories = [...new Set(allEvents.map(event => event.category))];
+  const categories = eventsData.length > 0 
+    ? [...new Set(processEvents(eventsData).map(event => event.category))] 
+    : ['Technology', 'Music', 'Art', 'Business', 'Gaming', 'Networking'];
 
   useEffect(() => {
     // Subscribe to real-time updates
@@ -150,28 +101,16 @@ const EventsPage = () => {
         async (payload) => {
           console.log('Real-time update received in Events Page:', payload);
           
-          // Auto-refresh the events list when changes occur
-          const updatedEvents = allEvents.slice(); // Create a copy of the events array
+          // Refetch events when database changes occur
+          await refetch();
           
-          if (payload.eventType === 'INSERT' && payload.new) {
-            // Add the new event to the list
-            updatedEvents.push(payload.new);
-          } else if (payload.eventType === 'DELETE' && payload.old) {
-            // Remove the deleted event from the list
-            const index = updatedEvents.findIndex(event => event.id === payload.old.id);
-            if (index !== -1) {
-              updatedEvents.splice(index, 1);
-            }
-          } else if (payload.eventType === 'UPDATE' && payload.new) {
-            // Update the modified event in the list
-            const index = updatedEvents.findIndex(event => event.id === payload.new.id);
-            if (index !== -1) {
-              updatedEvents[index] = payload.new;
-            }
+          // Show notification for new events
+          if (payload.eventType === 'INSERT') {
+            toast({
+              title: 'New Event Added',
+              description: `A new event has been added to the list.`,
+            });
           }
-
-          // Update the filtered events
-          setFilteredEvents(updatedEvents);
         }
       )
       .subscribe();
@@ -179,11 +118,14 @@ const EventsPage = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [allEvents]);
+  }, [refetch, toast]);
 
+  // Initial load and when filters change
   useEffect(() => {
-    filterEvents();
-  }, [searchTerm, categoryFilter, availabilityFilter]);
+    if (eventsData.length > 0) {
+      filterEvents();
+    }
+  }, [searchTerm, categoryFilter, availabilityFilter, eventsData]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -210,7 +152,7 @@ const EventsPage = () => {
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem> {/* Changed from empty string to 'all' */}
+                    <SelectItem value="all">All Categories</SelectItem>
                     {categories.map(category => (
                       <SelectItem key={category} value={category}>{category}</SelectItem>
                     ))}
@@ -222,7 +164,7 @@ const EventsPage = () => {
                     <SelectValue placeholder="Availability" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Tickets</SelectItem> {/* Changed from empty string to 'all' */}
+                    <SelectItem value="all">All Tickets</SelectItem>
                     <SelectItem value="available">Available</SelectItem>
                     <SelectItem value="limited">Limited</SelectItem>
                     <SelectItem value="sold out">Sold Out</SelectItem>
@@ -237,31 +179,35 @@ const EventsPage = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredEvents.length > 0 ? (
-              filteredEvents.map((event) => (
+          {isLoading ? (
+            <div className="col-span-full text-center py-12">
+              <p className="text-xl text-muted-foreground">Loading events...</p>
+            </div>
+          ) : filteredEvents.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {filteredEvents.map((event) => (
                 <EventCard 
                   key={event.id}
                   {...event}
                 />
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-xl text-muted-foreground">No events found matching your criteria.</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4 glass-button"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setCategoryFilter('all'); // Changed from empty string to 'all'
-                    setAvailabilityFilter('all'); // Changed from empty string to 'all'
-                  }}
-                >
-                  Reset Filters
-                </Button>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-xl text-muted-foreground">No events found matching your criteria.</p>
+              <Button 
+                variant="outline" 
+                className="mt-4 glass-button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setCategoryFilter('all');
+                  setAvailabilityFilter('all');
+                }}
+              >
+                Reset Filters
+              </Button>
+            </div>
+          )}
         </div>
       </main>
       <Footer />

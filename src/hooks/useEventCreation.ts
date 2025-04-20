@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useEvents } from './useEvents';
 import { useAuth } from '@/providers/AuthProvider';
@@ -6,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 export const useEventCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
-  const { createEventMutation } = useEvents();
+  const { createEventMutation, publishEventMutation } = useEvents();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -19,6 +20,8 @@ export const useEventCreation = () => {
     price: number;
     total_tickets: number;
     image_url: string;
+    category?: string;
+    isPublished?: boolean;
   }) => {
     if (!user) {
       toast({
@@ -31,13 +34,25 @@ export const useEventCreation = () => {
 
     setIsCreating(true);
     try {
-      await createEventMutation.mutateAsync(eventData);
+      const { isPublished, ...eventDataToCreate } = eventData;
+      
+      // Create the event
+      const createdEvent = await createEventMutation.mutateAsync(eventDataToCreate);
+      
+      // If requested, publish the event right away
+      if (isPublished && createdEvent) {
+        await publishEventMutation.mutateAsync({ 
+          id: createdEvent.id 
+        });
+      }
 
+      // Force refresh of the events queries
       await queryClient.invalidateQueries({ queryKey: ['events'] });
+      await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
 
       toast({
         title: 'Event created',
-        description: 'Your event has been created successfully',
+        description: `Your event "${eventData.title}" has been ${isPublished ? 'created and published' : 'saved as draft'}`,
       });
 
       return true;

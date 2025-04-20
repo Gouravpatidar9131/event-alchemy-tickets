@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { useEvents } from '@/hooks/useEvents';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { format } from 'date-fns';
 
 const FeaturedEvents = () => {
   const { useEventsQuery } = useEvents();
@@ -29,22 +30,28 @@ const FeaturedEvents = () => {
         availability = "available";
       }
 
+      // Format date properly
+      const eventDate = new Date(event.date);
+
       return {
         id: event.id,
         title: event.title,
-        date: new Date(event.date).toLocaleDateString(),
-        time: new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: format(eventDate, 'PP'),
+        time: format(eventDate, 'p'),
         location: event.location,
         imageUrl: event.image_url || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f',
         price: `${event.price} SOL`,
-        category: 'Technology',
+        category: event.category || 'Technology',
         availability
       };
     });
 
   useEffect(() => {
-    // Enable REPLICA IDENTITY FULL for the events table to get complete row data
-    const channel = supabase.channel('events-changes')
+    // Initial fetch of events
+    refetch();
+    
+    // Enable real-time updates for the events table
+    const channel = supabase.channel('featured-events-changes')
       .on(
         'postgres_changes',
         {
@@ -53,7 +60,7 @@ const FeaturedEvents = () => {
           table: 'events'
         },
         async (payload) => {
-          console.log('Real-time update received:', payload);
+          console.log('Real-time update received in Featured Events:', payload);
           
           // Refetch events when changes occur
           await refetch();
@@ -87,12 +94,18 @@ const FeaturedEvents = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featuredEvents.map((event) => (
-            <EventCard 
-              key={event.id}
-              {...event}
-            />
-          ))}
+          {featuredEvents.length > 0 ? (
+            featuredEvents.map((event) => (
+              <EventCard 
+                key={event.id}
+                {...event}
+              />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-muted-foreground">No events available. Be the first to create one!</p>
+            </div>
+          )}
         </div>
       </div>
     </section>
