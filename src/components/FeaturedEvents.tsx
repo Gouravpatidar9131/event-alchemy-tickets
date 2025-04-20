@@ -16,19 +16,29 @@ const FeaturedEvents = () => {
     .filter(event => event.is_published)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 4)
-    .map(event => ({
-      id: event.id,
-      title: event.title,
-      date: new Date(event.date).toLocaleDateString(),
-      time: new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      location: event.location,
-      imageUrl: event.image_url || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f',
-      price: `${event.price} SOL`,
-      category: 'Technology', // You might want to add a category field to your events table
-      // Explicitly cast as one of the allowed types
-      availability: event.tickets_sold >= event.total_tickets ? 'sold out' : 
-                   event.tickets_sold >= event.total_tickets * 0.8 ? 'limited' : 'available'
-    }));
+    .map(event => {
+      // Determine availability based on ticket sales
+      let availability: "sold out" | "limited" | "available";
+      if (event.tickets_sold >= event.total_tickets) {
+        availability = "sold out";
+      } else if (event.tickets_sold >= event.total_tickets * 0.8) {
+        availability = "limited";
+      } else {
+        availability = "available";
+      }
+
+      return {
+        id: event.id,
+        title: event.title,
+        date: new Date(event.date).toLocaleDateString(),
+        time: new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        location: event.location,
+        imageUrl: event.image_url || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f',
+        price: `${event.price} SOL`,
+        category: 'Technology', // You might want to add a category field to your events table
+        availability
+      };
+    });
 
   useEffect(() => {
     // Subscribe to realtime updates for the events table

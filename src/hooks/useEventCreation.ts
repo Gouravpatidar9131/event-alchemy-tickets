@@ -17,7 +17,7 @@ export const useEventCreation = () => {
     location: string;
     price: number;
     total_tickets: number;
-    image_url?: string;
+    image_url: string; // Changed from optional to required to match the Event type
   }) => {
     if (!user) {
       toast({

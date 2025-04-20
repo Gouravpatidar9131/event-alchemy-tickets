@@ -108,17 +108,17 @@ const allEvents = [
 
 const EventsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [availabilityFilter, setAvailabilityFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all'); // Changed from empty string to 'all'
+  const [availabilityFilter, setAvailabilityFilter] = useState('all'); // Changed from empty string to 'all'
 
   // Filter events based on search term and filters
   const filteredEvents = allEvents.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           event.location.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesCategory = categoryFilter === '' || event.category === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter; // Updated condition
     
-    const matchesAvailability = availabilityFilter === '' || 
+    const matchesAvailability = availabilityFilter === 'all' || // Updated condition
                                (availabilityFilter === 'available' && event.availability === 'available') ||
                                (availabilityFilter === 'limited' && event.availability === 'limited') ||
                                (availabilityFilter === 'sold out' && event.availability === 'sold out');
@@ -154,7 +154,7 @@ const EventsPage = () => {
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem> {/* Changed from empty string to 'all' */}
                     {categories.map(category => (
                       <SelectItem key={category} value={category}>{category}</SelectItem>
                     ))}
@@ -166,7 +166,7 @@ const EventsPage = () => {
                     <SelectValue placeholder="Availability" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Tickets</SelectItem>
+                    <SelectItem value="all">All Tickets</SelectItem> {/* Changed from empty string to 'all' */}
                     <SelectItem value="available">Available</SelectItem>
                     <SelectItem value="limited">Limited</SelectItem>
                     <SelectItem value="sold out">Sold Out</SelectItem>
@@ -197,8 +197,8 @@ const EventsPage = () => {
                   className="mt-4 glass-button"
                   onClick={() => {
                     setSearchTerm('');
-                    setCategoryFilter('');
-                    setAvailabilityFilter('');
+                    setCategoryFilter('all'); // Changed from empty string to 'all'
+                    setAvailabilityFilter('all'); // Changed from empty string to 'all'
                   }}
                 >
                   Reset Filters
