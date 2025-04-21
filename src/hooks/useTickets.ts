@@ -111,9 +111,9 @@ export const useTickets = () => {
       const recipient = eventDetails.wallet_address || eventDetails.organizer_wallet;
       if (!recipient) throw new Error("Event organizer's wallet address not found");
 
-      const recipientPubkey = new PublicKey(recipient);
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-
+      const recipientPubkey = new PublicKey(recipient);
+      
       const amountLamports = Math.floor(Number(price) * LAMPORTS_PER_SOL);
 
       const transaction = new Transaction().add(
@@ -124,14 +124,34 @@ export const useTickets = () => {
         })
       );
 
-      let txSignature = '';
+      const blockHash = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockHash.blockhash;
+      transaction.feePayer = wallet.publicKey;
+
       try {
-        txSignature = await wallet.sendTransaction(transaction, connection);
-        await connection.confirmTransaction(txSignature, 'confirmed');
+        const signature = await wallet.sendTransaction(transaction, connection);
+        console.log('Transaction sent with signature:', signature);
+        
+        const confirmation = await connection.confirmTransaction({
+          signature,
+          blockhash: blockHash.blockhash,
+          lastValidBlockHeight: blockHash.lastValidBlockHeight
+        }, 'confirmed');
+        
+        if (confirmation.value.err) {
+          throw new Error(`Transaction failed: ${confirmation.value.err.toString()}`);
+        }
+        
+        console.log('Payment confirmed:', signature);
       } catch (error: any) {
         console.error("Solana Payment Error:", error);
-        throw new Error('Failed to send SOL payment from wallet: ' + (error.message || error));
+        throw new Error('Failed to send SOL payment: ' + (error.message || error));
       }
+    } else if (currency === 'MONAD') {
+      toast("MONAD payments not yet implemented", {
+        description: "This payment method will be available soon"
+      });
+      throw new Error("MONAD payments are not yet implemented");
     }
 
     try {
@@ -167,7 +187,7 @@ export const useTickets = () => {
 
       return data;
     } catch (error) {
-      console.error('Error purchasing ticket:', error);
+      console.error('Error creating ticket record:', error);
       throw error;
     }
   };
