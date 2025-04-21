@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -108,13 +107,40 @@ export const useTickets = () => {
     if (!user) throw new Error('You must be logged in to purchase a ticket');
     if (!wallet.connected || !wallet.publicKey || !wallet.sendTransaction) throw new Error('Your wallet must be connected');
 
-    if (currency === 'SOL') {
-      const recipient = eventDetails.wallet_address || eventDetails.organizer_wallet;
-      if (!recipient) throw new Error("Event organizer's wallet address not found");
+    let recipientWallet: string | undefined = undefined;
 
+    const { data: eventData, error: eventError } = await supabase
+      .from('events')
+      .select(`
+        *,
+        profiles:creator_id (
+          id,
+          wallet_address
+        )
+      `)
+      .eq('id', eventId)
+      .single();
+
+    if (eventError || !eventData) {
+      console.error('Event fetch error:', eventError);
+      throw new Error("Unable to load event details for payment");
+    }
+
+    recipientWallet = eventData.profiles?.wallet_address;
+
+    if (!recipientWallet) {
+      recipientWallet = eventDetails.wallet_address || eventDetails.organizer_wallet;
+    }
+
+    console.log("Sending payment to recipient:", recipientWallet);
+
+    if (!recipientWallet) {
+      throw new Error("Event organizer's wallet address not found. Ask the event creator to set their wallet address on their profile.");
+    }
+
+    if (currency === 'SOL') {
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
-      const recipientPubkey = new PublicKey(recipient);
-      
+      const recipientPubkey = new PublicKey(recipientWallet);
       const amountLamports = Math.floor(Number(price) * LAMPORTS_PER_SOL);
 
       const transaction = new Transaction().add(
@@ -132,24 +158,17 @@ export const useTickets = () => {
       try {
         const signature = await wallet.sendTransaction(transaction, connection);
         console.log('Transaction sent with signature:', signature);
-        
-        const confirmation = await connection.confirmTransaction({
-          signature,
-          blockhash: blockHash.blockhash,
-          lastValidBlockHeight: blockHash.lastValidBlockHeight
-        }, 'confirmed');
-        
-        if (confirmation.value.err) {
+
+        const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+        if (confirmation.value && confirmation.value.err) {
           throw new Error(`Transaction failed: ${confirmation.value.err.toString()}`);
         }
-        
         console.log('Payment confirmed:', signature);
       } catch (error: any) {
         console.error("Solana Payment Error:", error);
         throw new Error('Failed to send SOL payment: ' + (error.message || error));
       }
     } else if (currency === 'MONAD') {
-      // Fix here: Sonner toast takes a single string argument with options as separate parameter
       toast("MONAD payments not yet implemented");
       throw new Error("MONAD payments are not yet implemented");
     }
@@ -181,7 +200,7 @@ export const useTickets = () => {
       await supabase
         .from('events')
         .update({
-          tickets_sold: eventDetails.tickets_sold + 1
+          tickets_sold: eventData.tickets_sold + 1
         })
         .eq('id', eventId);
 
