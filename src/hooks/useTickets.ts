@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -23,7 +24,7 @@ export type Ticket = {
 export const useTickets = () => {
   const { user } = useAuth();
   const wallet = useWallet();
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
   const queryClient = useQueryClient();
 
   const fetchUserTickets = async () => {
@@ -148,9 +149,8 @@ export const useTickets = () => {
         throw new Error('Failed to send SOL payment: ' + (error.message || error));
       }
     } else if (currency === 'MONAD') {
-      toast("MONAD payments not yet implemented", {
-        description: "This payment method will be available soon"
-      });
+      // Fix here: Sonner toast takes a single string argument with options as separate parameter
+      toast("MONAD payments not yet implemented");
       throw new Error("MONAD payments are not yet implemented");
     }
 
@@ -259,13 +259,13 @@ export const useTickets = () => {
       queryClient.invalidateQueries({ queryKey: ['eventTickets', data.event_id] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['event', data.event_id] });
-      toast({
+      uiToast({
         title: 'Ticket purchased',
         description: 'Your NFT ticket has been minted and added to your collection',
       });
     },
     onError: (error: any) => {
-      toast({
+      uiToast({
         title: 'Error purchasing ticket',
         description: error.message,
         variant: 'destructive',
@@ -279,13 +279,13 @@ export const useTickets = () => {
       queryClient.invalidateQueries({ queryKey: ['userTickets'] });
       queryClient.invalidateQueries({ queryKey: ['eventTickets', data.event_id] });
       queryClient.invalidateQueries({ queryKey: ['ticket', data.id] });
-      toast({
+      uiToast({
         title: 'Ticket checked in',
         description: 'The ticket has been marked as used',
       });
     },
     onError: (error: any) => {
-      toast({
+      uiToast({
         title: 'Error checking in ticket',
         description: error.message,
         variant: 'destructive',
