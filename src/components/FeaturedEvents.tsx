@@ -44,7 +44,6 @@ const FeaturedEvents = () => {
         location: event.location,
         imageUrl: event.image_url && event.image_url.trim() !== '' ? event.image_url : defaultImage,
         price: `${event.price} SOL`,
-        // Add a type assertion to indicate we know what we're doing
         category: 'Technology', // Default category when not specified in DB
         availability
       };
