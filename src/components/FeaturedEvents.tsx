@@ -32,16 +32,20 @@ const FeaturedEvents = () => {
 
       // Format date properly
       const eventDate = new Date(event.date);
-
+      
+      // Use a default image if none is provided
+      const defaultImage = 'https://images.unsplash.com/photo-1591522811280-a8759970b03f';
+      
       return {
         id: event.id,
         title: event.title,
         date: format(eventDate, 'PP'),
         time: format(eventDate, 'p'),
         location: event.location,
-        imageUrl: event.image_url || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f',
+        imageUrl: event.image_url && event.image_url.trim() !== '' ? event.image_url : defaultImage,
         price: `${event.price} SOL`,
-        category: event.category || 'Technology',
+        // Add a type assertion to indicate we know what we're doing
+        category: 'Technology', // Default category when not specified in DB
         availability
       };
     });
