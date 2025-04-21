@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -110,7 +111,8 @@ export const useTickets = () => {
       console.log("Purchasing ticket for event:", eventId);
       console.log("Ticket details:", { ticketType, price, currency });
       
-      // Create a mock ticket record in the database
+      // Create a ticket record in the database
+      const purchaseDate = new Date().toISOString();
       const ticketData = {
         event_id: eventId,
         owner_id: user.id,
@@ -118,6 +120,7 @@ export const useTickets = () => {
         token_id: `mock-token-${Date.now()}`,
         status: 'active',
         purchase_price: price,
+        purchase_date: purchaseDate,
         metadata: {
           ticket_type: ticketType,
           currency: currency
