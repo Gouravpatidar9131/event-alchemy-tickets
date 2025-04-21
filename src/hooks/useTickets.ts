@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -6,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { initializeMetaplex, createNFTTicket, updateNFTTicketStatus } from '@/utils/metaplex';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { toast } from '@/components/ui/sonner';
+import { Connection, PublicKey, LAMPORTS_PER_SOL, Transaction, SystemProgram } from '@solana/web3.js';
 
 export type Ticket = {
   id: string;
@@ -105,13 +105,36 @@ export const useTickets = () => {
     imageBuffer: ArrayBuffer;
   }) => {
     if (!user) throw new Error('You must be logged in to purchase a ticket');
-    if (!wallet.connected) throw new Error('Your wallet must be connected');
-    
+    if (!wallet.connected || !wallet.publicKey || !wallet.sendTransaction) throw new Error('Your wallet must be connected');
+
+    if (currency === 'SOL') {
+      const recipient = eventDetails.wallet_address || eventDetails.organizer_wallet;
+      if (!recipient) throw new Error("Event organizer's wallet address not found");
+
+      const recipientPubkey = new PublicKey(recipient);
+      const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
+
+      const amountLamports = Math.floor(Number(price) * LAMPORTS_PER_SOL);
+
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: wallet.publicKey,
+          toPubkey: recipientPubkey,
+          lamports: amountLamports,
+        })
+      );
+
+      let txSignature = '';
+      try {
+        txSignature = await wallet.sendTransaction(transaction, connection);
+        await connection.confirmTransaction(txSignature, 'confirmed');
+      } catch (error: any) {
+        console.error("Solana Payment Error:", error);
+        throw new Error('Failed to send SOL payment from wallet: ' + (error.message || error));
+      }
+    }
+
     try {
-      console.log("Purchasing ticket for event:", eventId);
-      console.log("Ticket details:", { ticketType, price, currency });
-      
-      // Create a ticket record in the database
       const purchaseDate = new Date().toISOString();
       const ticketData = {
         event_id: eventId,
@@ -126,24 +149,22 @@ export const useTickets = () => {
           currency: currency
         }
       };
-      
+
       const { data, error } = await supabase
         .from('tickets')
         .insert(ticketData)
         .select()
         .single();
-        
+
       if (error) throw new Error(error.message);
-      
-      // Update event's ticket count
+
       await supabase
         .from('events')
         .update({
           tickets_sold: eventDetails.tickets_sold + 1
         })
         .eq('id', eventId);
-      
-      console.log("Ticket purchased successfully:", data);
+
       return data;
     } catch (error) {
       console.error('Error purchasing ticket:', error);
@@ -155,7 +176,6 @@ export const useTickets = () => {
     if (!user) throw new Error('You must be logged in to check in a ticket');
     
     try {
-      // 1. Get the ticket details
       const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .select('*')
@@ -165,17 +185,14 @@ export const useTickets = () => {
       if (ticketError) throw new Error(ticketError.message);
       if (ticket.status === 'used') throw new Error('This ticket has already been used');
       
-      // 2. Update the NFT metadata to mark it as used (in a production app)
       if (ticket.mint_address) {
         try {
           await updateNFTTicketStatus(ticket.mint_address, 'Used');
         } catch (nftError) {
           console.error('Error updating NFT status:', nftError);
-          // Continue with the check-in process even if the NFT update fails
         }
       }
       
-      // 3. Update the ticket status in the database
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('tickets')
@@ -189,8 +206,6 @@ export const useTickets = () => {
         
       if (error) throw new Error(error.message);
       
-      // 4. Update the user's profile to increment events_attended
-      // Fix the RPC calls by using a direct update instead
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('events_attended, loyalty_points')
@@ -217,7 +232,6 @@ export const useTickets = () => {
     }
   };
 
-  // Mutations
   const purchaseTicketMutation = useMutation({
     mutationFn: purchaseTicket,
     onSuccess: (data) => {
@@ -260,7 +274,6 @@ export const useTickets = () => {
   });
 
   return {
-    // Queries
     useUserTicketsQuery: () => useQuery({
       queryKey: ['userTickets'],
       queryFn: fetchUserTickets,
@@ -276,7 +289,6 @@ export const useTickets = () => {
       queryFn: () => fetchTicket(id),
       enabled: !!id,
     }),
-    // Mutations
     purchaseTicketMutation,
     checkInTicketMutation,
   };
