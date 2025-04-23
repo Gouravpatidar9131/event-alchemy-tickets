@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -109,15 +110,10 @@ export const useTickets = () => {
 
     let recipientWallet: string | undefined = undefined;
 
+    // First, get the event creator's ID
     const { data: eventData, error: eventError } = await supabase
       .from('events')
-      .select(`
-        *,
-        profiles:creator_id (
-          id,
-          wallet_address
-        )
-      `)
+      .select('*')
       .eq('id', eventId)
       .single();
 
@@ -126,17 +122,35 @@ export const useTickets = () => {
       throw new Error("Unable to load event details for payment");
     }
 
-    recipientWallet = eventData.profiles?.wallet_address;
-
-    if (!recipientWallet) {
-      recipientWallet = eventDetails.wallet_address || eventDetails.organizer_wallet;
+    console.log("Event data:", eventData);
+    
+    // Then, fetch the creator's profile separately to get their wallet address
+    if (eventData.creator_id) {
+      const { data: creatorProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('wallet_address')
+        .eq('id', eventData.creator_id)
+        .single();
+      
+      if (!profileError && creatorProfile) {
+        recipientWallet = creatorProfile.wallet_address;
+        console.log("Found creator wallet address:", recipientWallet);
+      } else {
+        console.error("Error fetching creator profile:", profileError);
+      }
     }
 
-    console.log("Sending payment to recipient:", recipientWallet);
+    // Fallback to event details if no wallet address found in profile
+    if (!recipientWallet) {
+      recipientWallet = eventDetails.wallet_address || eventDetails.organizer_wallet;
+      console.log("Using fallback wallet address:", recipientWallet);
+    }
 
     if (!recipientWallet) {
       throw new Error("Event organizer's wallet address not found. Ask the event creator to set their wallet address on their profile.");
     }
+
+    console.log("Sending payment to recipient:", recipientWallet);
 
     if (currency === 'SOL') {
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
