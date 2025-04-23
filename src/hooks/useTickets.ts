@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -123,7 +122,7 @@ export const useTickets = () => {
     }
 
     console.log("Event data:", eventData);
-    
+
     // Then, fetch the creator's profile separately to get their wallet address
     if (eventData.creator_id) {
       const { data: creatorProfile, error: profileError } = await supabase
@@ -131,12 +130,14 @@ export const useTickets = () => {
         .select('wallet_address')
         .eq('id', eventData.creator_id)
         .single();
-      
-      if (!profileError && creatorProfile) {
+
+      if (profileError) {
+        console.error("Error fetching creator profile:", profileError);
+      }
+      // Validate if profile record and wallet_address exist
+      if (creatorProfile && typeof creatorProfile.wallet_address === "string" && creatorProfile.wallet_address.length > 0) {
         recipientWallet = creatorProfile.wallet_address;
         console.log("Found creator wallet address:", recipientWallet);
-      } else {
-        console.error("Error fetching creator profile:", profileError);
       }
     }
 
