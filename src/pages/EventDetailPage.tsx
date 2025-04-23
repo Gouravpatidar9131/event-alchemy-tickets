@@ -6,7 +6,7 @@ import { useEvents } from '@/hooks/useEvents';
 import { useAuth } from '@/providers/AuthProvider';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Ticket, Users } from 'lucide-react';
+import { Calendar, MapPin, Ticket, Users, Image } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import PurchaseTicketModal from '@/components/PurchaseTicketModal';
@@ -24,6 +24,8 @@ const EventDetailPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTicketType, setSelectedTicketType] = useState(0);
   const [ticketQuantity, setTicketQuantity] = useState(1);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   
   const { data: event, isLoading, error } = useEventQuery(id || '');
   const { data: eventTickets } = useEventTicketsQuery(id || '');
@@ -49,11 +51,44 @@ const EventDetailPage = () => {
     if (error) {
       console.error('Error loading event:', error);
     }
-  }, [error]);
+    
+    // Reset image states when event changes
+    if (event) {
+      setImageLoaded(false);
+      setImageError(false);
+    }
+  }, [error, event]);
 
   const handlePurchase = (ticketTypeIndex: number) => {
     setSelectedTicketType(ticketTypeIndex);
     setIsModalOpen(true);
+  };
+  
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+    setImageError(false);
+  };
+  
+  const handleImageError = () => {
+    console.error('Error loading image from URL:', event?.image_url);
+    setImageError(true);
+    setImageLoaded(false);
+  };
+  
+  // Get a placeholder image if no image or error loading
+  const getPlaceholderImage = () => {
+    const placeholders = [
+      "https://images.unsplash.com/photo-1649972904349-6e44c42644a7",
+      "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475",
+      "https://images.unsplash.com/photo-1461749280684-dccba630e2f6",
+      "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d"
+    ];
+    
+    // Use event ID as a seed to always get the same placeholder for the same event
+    const seed = id ? parseInt(id.substring(0, 8), 16) : 0;
+    const index = seed % placeholders.length;
+    return `${placeholders[index]}?w=800&h=450&fit=crop&auto=format`;
   };
 
   if (isLoading) {
@@ -84,18 +119,36 @@ const EventDetailPage = () => {
         <div className="md:col-span-2">
           <h1 className="text-3xl font-bold mb-4">{event.title}</h1>
           
-          <div className="rounded-lg overflow-hidden mb-6 aspect-video bg-muted">
-            {event.image_url ? (
+          <div className="rounded-lg overflow-hidden mb-6 aspect-video bg-muted relative">
+            {!imageError && event.image_url ? (
               <img 
                 src={event.image_url} 
                 alt={event.title} 
-                className="w-full h-full object-cover"
+                className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={handleImageLoad}
+                onError={handleImageError}
               />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                <Ticket className="h-12 w-12 text-gray-400" />
+            ) : null}
+            
+            {/* Show placeholder while loading or if error/no image */}
+            {(!imageLoaded || imageError || !event.image_url) && (
+              <div className="absolute inset-0 w-full h-full">
+                <img 
+                  src={getPlaceholderImage()} 
+                  alt={`${event.title} placeholder`} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback to a colored background if even the placeholder fails
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
               </div>
             )}
+            
+            {/* Final fallback if all images fail */}
+            <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600 ${(imageLoaded && !imageError) ? 'hidden' : ''}`}>
+              <Image className="h-16 w-16 text-white opacity-50" />
+            </div>
           </div>
           
           <div className="flex flex-wrap gap-4 mb-6">
