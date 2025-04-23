@@ -1,10 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthProvider';
 
-// Define the MonadWallet interface
 interface MonadWallet {
   publicKey: string | null;
   connected: boolean;
@@ -14,7 +12,6 @@ interface MonadWallet {
   sendTransaction: (amount: number, recipient: string) => Promise<string>;
 }
 
-// Create the context
 const MonadWalletContext = createContext<MonadWallet | undefined>(undefined);
 
 export function useMonadWallet(): MonadWallet {
@@ -35,26 +32,21 @@ export function MonadProvider({ children }: MonadProviderProps) {
   const [connecting, setConnecting] = useState(false);
   const { user } = useAuth();
 
-  // Mock wallets for testing
   const MOCK_WALLETS = [
     "monad1qgx47fj03vx9069r0gvpna867arhpn3qvzl4je",
     "monad1t6vhntxwu0mj99z7jydmehh29y9e9k5yxfskz3",
     "monad14kzd5tzp36ksg566qhvc5hl4eavs5za4pc8wkl"
   ];
 
-  // Connect to wallet
   const connect = async () => {
     try {
       setConnecting(true);
-      // Simulate connection delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Generate a random wallet address from our mock list
       const randomWallet = MOCK_WALLETS[Math.floor(Math.random() * MOCK_WALLETS.length)];
       setPublicKey(randomWallet);
       setConnected(true);
       
-      // Update user profile if logged in
       if (user) {
         try {
           const { error } = await supabase
@@ -84,15 +76,12 @@ export function MonadProvider({ children }: MonadProviderProps) {
     }
   };
 
-  // Disconnect from wallet
   const disconnect = async () => {
     try {
-      // Simulate disconnection delay
       await new Promise(resolve => setTimeout(resolve, 500));
       setPublicKey(null);
       setConnected(false);
       
-      // Update user profile if logged in
       if (user) {
         try {
           const { error } = await supabase
@@ -117,17 +106,14 @@ export function MonadProvider({ children }: MonadProviderProps) {
     }
   };
 
-  // Send a transaction (mock implementation)
   const sendTransaction = async (amount: number, recipient: string): Promise<string> => {
     if (!connected || !publicKey) {
       throw new Error('Wallet not connected');
     }
     
     try {
-      // Simulate transaction delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Generate a mock transaction hash
       const txHash = 'monad_tx_' + Math.random().toString(36).substring(2, 15);
       
       toast('Transaction Sent', {

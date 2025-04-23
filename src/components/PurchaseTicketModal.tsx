@@ -29,6 +29,14 @@ const MONAD_TO_SOL_RATE = 2; // 1 SOL = 2 MONAD (example rate)
 
 type CurrencyType = 'SOL' | 'MONAD';
 
+interface PurchaseTicketModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  event: any;
+  selectedTicketType: number;
+  ticketQuantity: number;
+}
+
 const PurchaseTicketModal = ({
   isOpen,
   onClose,

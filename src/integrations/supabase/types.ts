@@ -72,6 +72,7 @@ export type Database = {
           id: string
           is_event_creator: boolean | null
           loyalty_points: number | null
+          monad_wallet_address: string | null
           updated_at: string | null
           wallet_address: string | null
         }
@@ -83,6 +84,7 @@ export type Database = {
           id: string
           is_event_creator?: boolean | null
           loyalty_points?: number | null
+          monad_wallet_address?: string | null
           updated_at?: string | null
           wallet_address?: string | null
         }
@@ -94,6 +96,7 @@ export type Database = {
           id?: string
           is_event_creator?: boolean | null
           loyalty_points?: number | null
+          monad_wallet_address?: string | null
           updated_at?: string | null
           wallet_address?: string | null
         }

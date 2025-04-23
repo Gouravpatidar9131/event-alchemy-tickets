@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -145,8 +144,7 @@ export const useTickets = () => {
         console.error("Error fetching creator profile:", profileError);
       }
       
-      // Validate if profile record and appropriate wallet_address exist
-      if (creatorProfile) {
+      if (creatorProfile && typeof creatorProfile === 'object' && creatorProfile !== null) {
         if (currency === 'SOL' && creatorProfile.wallet_address) {
           recipientWallet = creatorProfile.wallet_address;
           console.log("Found creator Solana wallet address:", recipientWallet);
