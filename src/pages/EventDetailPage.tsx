@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -13,6 +12,16 @@ import PurchaseTicketModal from '@/components/PurchaseTicketModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTickets } from '@/hooks/useTickets';
 import CheckInScanner from '@/components/CheckInScanner';
+
+function getEventPhotoUrl(imageFilename: string | null | undefined): string | null {
+  if (!imageFilename) return null;
+  if (/^https?:\/\//i.test(imageFilename)) {
+    return imageFilename;
+  }
+  return `https://jrvbdvezrzwmilwzalqx.supabase.co/storage/v1/object/public/event-photos/${encodeURIComponent(
+    imageFilename,
+  )}`;
+}
 
 const EventDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,14 +43,12 @@ const EventDetailPage = () => {
   const availableTickets = event ? event.total_tickets - event.tickets_sold : 0;
   const eventDate = event ? new Date(event.date) : new Date();
   
-  // Define ticket types based on event price
   const ticketTypes = [
     { name: 'General Admission', price: event?.price?.toString() || '0' },
     { name: 'VIP', price: (event?.price ? event.price * 2 : 0).toString() },
     { name: 'Premium', price: (event?.price ? event.price * 3 : 0).toString() }
   ];
   
-  // Add ticket types to event object
   const eventWithTicketTypes = event ? {
     ...event,
     ticketTypes
@@ -52,7 +59,6 @@ const EventDetailPage = () => {
       console.error('Error loading event:', error);
     }
     
-    // Reset image states when event changes
     if (event) {
       setImageLoaded(false);
       setImageError(false);
@@ -75,7 +81,6 @@ const EventDetailPage = () => {
     setImageLoaded(false);
   };
   
-  // Get a placeholder image if no image or error loading
   const getPlaceholderImage = () => {
     const placeholders = [
       "https://images.unsplash.com/photo-1649972904349-6e44c42644a7",
@@ -85,11 +90,12 @@ const EventDetailPage = () => {
       "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d"
     ];
     
-    // Use event ID as a seed to always get the same placeholder for the same event
     const seed = id ? parseInt(id.substring(0, 8), 16) : 0;
     const index = seed % placeholders.length;
     return `${placeholders[index]}?w=800&h=450&fit=crop&auto=format`;
   };
+
+  const coverPhotoUrl = getEventPhotoUrl(event?.image_url);
 
   if (isLoading) {
     return (
@@ -120,9 +126,9 @@ const EventDetailPage = () => {
           <h1 className="text-3xl font-bold mb-4">{event.title}</h1>
           
           <div className="rounded-lg overflow-hidden mb-6 aspect-video bg-muted relative">
-            {!imageError && event.image_url ? (
+            {!imageError && coverPhotoUrl ? (
               <img 
-                src={event.image_url} 
+                src={coverPhotoUrl} 
                 alt={event.title} 
                 className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
                 onLoad={handleImageLoad}
@@ -130,22 +136,19 @@ const EventDetailPage = () => {
               />
             ) : null}
             
-            {/* Show placeholder while loading or if error/no image */}
-            {(!imageLoaded || imageError || !event.image_url) && (
+            {(!imageLoaded || imageError || !coverPhotoUrl) && (
               <div className="absolute inset-0 w-full h-full">
                 <img 
                   src={getPlaceholderImage()} 
                   alt={`${event.title} placeholder`} 
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // Fallback to a colored background if even the placeholder fails
                     e.currentTarget.style.display = 'none';
                   }}
                 />
               </div>
             )}
             
-            {/* Final fallback if all images fail */}
             <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600 ${(imageLoaded && !imageError) ? 'hidden' : ''}`}>
               <Image className="h-16 w-16 text-white opacity-50" />
             </div>
