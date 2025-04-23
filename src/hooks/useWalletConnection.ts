@@ -1,21 +1,36 @@
 
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useMonadWallet } from '@/providers/MonadProvider';
 import { useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useWalletConnection = () => {
-  const { connected, publicKey, disconnect } = useWallet();
+  const { connected: solanaConnected, publicKey: solanaPublicKey, disconnect: disconnectSolana } = useWallet();
+  const { connected: monadConnected, publicKey: monadPublicKey, disconnect: disconnectMonad } = useMonadWallet();
   const { toast } = useToast();
 
   const updateUserProfile = useCallback(async () => {
-    if (!publicKey) return;
-
     try {
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      if (!userId) return;
+
+      const updates: Record<string, any> = {};
+      
+      if (solanaConnected && solanaPublicKey) {
+        updates.wallet_address = solanaPublicKey.toString();
+      }
+      
+      if (monadConnected && monadPublicKey) {
+        updates.monad_wallet_address = monadPublicKey;
+      }
+      
+      if (Object.keys(updates).length === 0) return;
+
       const { error } = await supabase
         .from('profiles')
-        .update({ wallet_address: publicKey.toString() })
-        .eq('id', (await supabase.auth.getUser()).data.user?.id);
+        .update(updates)
+        .eq('id', userId);
 
       if (error) throw error;
 
@@ -31,15 +46,27 @@ export const useWalletConnection = () => {
         variant: 'destructive',
       });
     }
-  }, [publicKey, toast]);
+  }, [solanaPublicKey, monadPublicKey, solanaConnected, monadConnected, toast]);
 
-  const handleDisconnect = useCallback(async () => {
+  const handleDisconnect = useCallback(async (walletType: 'solana' | 'monad' | 'both' = 'both') => {
     try {
-      await disconnect();
+      const updates: Record<string, any> = {};
       
+      if (walletType === 'solana' || walletType === 'both') {
+        await disconnectSolana();
+        updates.wallet_address = null;
+      }
+      
+      if (walletType === 'monad' || walletType === 'both') {
+        await disconnectMonad();
+        updates.monad_wallet_address = null;
+      }
+      
+      if (Object.keys(updates).length === 0) return;
+
       const { error } = await supabase
         .from('profiles')
-        .update({ wallet_address: null })
+        .update(updates)
         .eq('id', (await supabase.auth.getUser()).data.user?.id);
 
       if (error) throw error;
@@ -56,11 +83,13 @@ export const useWalletConnection = () => {
         variant: 'destructive',
       });
     }
-  }, [disconnect, toast]);
+  }, [disconnectSolana, disconnectMonad, toast]);
 
   return {
-    connected,
-    publicKey,
+    solanaConnected,
+    solanaPublicKey,
+    monadConnected,
+    monadPublicKey,
     updateUserProfile,
     handleDisconnect,
   };

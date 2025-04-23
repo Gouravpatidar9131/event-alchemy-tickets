@@ -1,9 +1,11 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { initializeMetaplex, createNFTTicket, updateNFTTicketStatus } from '@/utils/metaplex';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useMonadWallet } from '@/providers/MonadProvider';
 import { toast } from '@/components/ui/sonner';
 import { Connection, PublicKey, LAMPORTS_PER_SOL, Transaction, SystemProgram } from '@solana/web3.js';
 
@@ -22,7 +24,8 @@ export type Ticket = {
 
 export const useTickets = () => {
   const { user } = useAuth();
-  const wallet = useWallet();
+  const solanaWallet = useWallet();
+  const monadWallet = useMonadWallet();
   const { toast: uiToast } = useToast();
   const queryClient = useQueryClient();
 
@@ -105,7 +108,14 @@ export const useTickets = () => {
     imageBuffer: ArrayBuffer;
   }) => {
     if (!user) throw new Error('You must be logged in to purchase a ticket');
-    if (!wallet.connected || !wallet.publicKey || !wallet.sendTransaction) throw new Error('Your wallet must be connected');
+    
+    const isValidWallet = 
+      (currency === 'SOL' && solanaWallet.connected && solanaWallet.publicKey && solanaWallet.sendTransaction) ||
+      (currency === 'MONAD' && monadWallet.connected && monadWallet.publicKey);
+    
+    if (!isValidWallet) {
+      throw new Error(`Your ${currency} wallet must be connected`);
+    }
 
     let recipientWallet: string | undefined = undefined;
 
@@ -127,40 +137,49 @@ export const useTickets = () => {
     if (eventData.creator_id) {
       const { data: creatorProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('wallet_address')
+        .select(`wallet_address${currency === 'MONAD' ? ', monad_wallet_address' : ''}`)
         .eq('id', eventData.creator_id)
         .single();
 
       if (profileError) {
         console.error("Error fetching creator profile:", profileError);
       }
-      // Validate if profile record and wallet_address exist
-      if (creatorProfile && typeof creatorProfile.wallet_address === "string" && creatorProfile.wallet_address.length > 0) {
-        recipientWallet = creatorProfile.wallet_address;
-        console.log("Found creator wallet address:", recipientWallet);
+      
+      // Validate if profile record and appropriate wallet_address exist
+      if (creatorProfile) {
+        if (currency === 'SOL' && typeof creatorProfile.wallet_address === "string" && creatorProfile.wallet_address.length > 0) {
+          recipientWallet = creatorProfile.wallet_address;
+          console.log("Found creator Solana wallet address:", recipientWallet);
+        } else if (currency === 'MONAD' && typeof creatorProfile.monad_wallet_address === "string" && creatorProfile.monad_wallet_address.length > 0) {
+          recipientWallet = creatorProfile.monad_wallet_address;
+          console.log("Found creator Monad wallet address:", recipientWallet);
+        }
       }
     }
 
     // Fallback to event details if no wallet address found in profile
     if (!recipientWallet) {
-      recipientWallet = eventDetails.wallet_address || eventDetails.organizer_wallet;
-      console.log("Using fallback wallet address:", recipientWallet);
+      recipientWallet = currency === 'SOL' 
+        ? (eventDetails.wallet_address || eventDetails.organizer_wallet)
+        : (eventDetails.monad_wallet_address || eventDetails.organizer_monad_wallet);
+      console.log(`Using fallback ${currency} wallet address:`, recipientWallet);
     }
 
     if (!recipientWallet) {
-      throw new Error("Event organizer's wallet address not found. Ask the event creator to set their wallet address on their profile.");
+      throw new Error(`Event organizer's ${currency} wallet address not found. Ask the event creator to set their ${currency} wallet address on their profile.`);
     }
 
-    console.log("Sending payment to recipient:", recipientWallet);
+    console.log(`Sending ${currency} payment to recipient:`, recipientWallet);
 
-    if (currency === 'SOL') {
+    // Process payment based on selected currency
+    if (currency === 'SOL' && solanaWallet.publicKey && solanaWallet.sendTransaction) {
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
       const recipientPubkey = new PublicKey(recipientWallet);
       const amountLamports = Math.floor(Number(price) * LAMPORTS_PER_SOL);
 
       const transaction = new Transaction().add(
         SystemProgram.transfer({
-          fromPubkey: wallet.publicKey,
+          fromPubkey: solanaWallet.publicKey,
           toPubkey: recipientPubkey,
           lamports: amountLamports,
         })
@@ -168,10 +187,10 @@ export const useTickets = () => {
 
       const blockHash = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockHash.blockhash;
-      transaction.feePayer = wallet.publicKey;
+      transaction.feePayer = solanaWallet.publicKey;
 
       try {
-        const signature = await wallet.sendTransaction(transaction, connection);
+        const signature = await solanaWallet.sendTransaction(transaction, connection);
         console.log('Transaction sent with signature:', signature);
 
         const confirmation = await connection.confirmTransaction(signature, 'confirmed');
@@ -183,9 +202,15 @@ export const useTickets = () => {
         console.error("Solana Payment Error:", error);
         throw new Error('Failed to send SOL payment: ' + (error.message || error));
       }
-    } else if (currency === 'MONAD') {
-      toast("MONAD payments not yet implemented");
-      throw new Error("MONAD payments are not yet implemented");
+    } else if (currency === 'MONAD' && monadWallet.publicKey) {
+      try {
+        // Use our custom MonadWallet sendTransaction method
+        const txHash = await monadWallet.sendTransaction(price, recipientWallet);
+        console.log('Monad transaction successful:', txHash);
+      } catch (error: any) {
+        console.error("Monad Payment Error:", error);
+        throw new Error('Failed to send MONAD payment: ' + (error.message || error));
+      }
     }
 
     try {

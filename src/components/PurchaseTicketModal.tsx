@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useMonadWallet } from '@/providers/MonadProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTickets } from '@/hooks/useTickets';
 import { Button } from '@/components/ui/button';
@@ -45,7 +46,8 @@ const PurchaseTicketModal = ({
 }: PurchaseTicketModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyType>('SOL');
-  const { connected, publicKey } = useWallet();
+  const { connected: solanaConnected, publicKey: solanaPublicKey } = useWallet();
+  const { connected: monadConnected, publicKey: monadPublicKey } = useMonadWallet();
   const { user } = useAuth();
   const { purchaseTicketMutation } = useTickets();
   const navigate = useNavigate();
@@ -59,6 +61,11 @@ const PurchaseTicketModal = ({
   const totalPriceInSol = basePrice + NETWORK_FEE;
   const totalPriceInMonad = totalPriceInSol * MONAD_TO_SOL_RATE;
 
+  const isWalletConnected = (selectedCurrency === 'SOL' && solanaConnected) || 
+                           (selectedCurrency === 'MONAD' && monadConnected);
+  
+  const walletPublicKey = selectedCurrency === 'SOL' ? solanaPublicKey : monadPublicKey;
+
   const handlePurchase = async () => {
     if (!user) {
       toast('Please sign in to purchase tickets');
@@ -67,8 +74,8 @@ const PurchaseTicketModal = ({
       return;
     }
 
-    if (!connected || !publicKey) {
-      toast('Please connect your wallet to purchase tickets');
+    if (!isWalletConnected || !walletPublicKey) {
+      toast(`Please connect your ${selectedCurrency} wallet to purchase tickets`);
       onClose();
       return;
     }
@@ -200,6 +207,12 @@ const PurchaseTicketModal = ({
           <div className="mt-4 text-sm text-muted-foreground">
             <p>This will mint an NFT ticket to your connected wallet. The NFT will serve as your proof of purchase and entry to the event.</p>
           </div>
+          
+          {!isWalletConnected && (
+            <div className="mt-2 p-2 bg-yellow-50 text-yellow-700 rounded border border-yellow-200 text-sm">
+              Please connect your {selectedCurrency} wallet before proceeding with the purchase.
+            </div>
+          )}
         </div>
         
         <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-3">
@@ -212,8 +225,11 @@ const PurchaseTicketModal = ({
           </Button>
           <Button
             onClick={handlePurchase}
-            className="bg-solana-gradient hover:opacity-90"
-            disabled={isProcessing}
+            className={cn(
+              "hover:opacity-90",
+              selectedCurrency === 'SOL' ? 'bg-solana-gradient' : 'bg-purple-600'
+            )}
+            disabled={isProcessing || !isWalletConnected}
           >
             {isProcessing ? (
               <>
