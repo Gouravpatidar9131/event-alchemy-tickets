@@ -34,21 +34,26 @@ export const useEventCreation = () => {
 
     setIsCreating(true);
     try {
+      console.log("Starting event creation process:", eventData);
       const { isPublished, ...eventDataToCreate } = eventData;
       
       // Create the event
       const createdEvent = await createEventMutation.mutateAsync(eventDataToCreate);
+      console.log("Event created:", createdEvent);
       
       // If requested, publish the event right away
       if (isPublished && createdEvent) {
+        console.log("Publishing event:", createdEvent.id);
         await publishEventMutation.mutateAsync({ 
           id: createdEvent.id 
         });
+        console.log("Event published successfully");
       }
 
       // Force refresh of the events queries
       await queryClient.invalidateQueries({ queryKey: ['events'] });
       await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
+      await queryClient.invalidateQueries({ queryKey: ['event', createdEvent.id] });
 
       toast({
         title: 'Event created',
@@ -57,6 +62,7 @@ export const useEventCreation = () => {
 
       return true;
     } catch (error: any) {
+      console.error("Error in createEvent:", error);
       toast({
         title: 'Error creating event',
         description: error.message || 'Failed to create event',

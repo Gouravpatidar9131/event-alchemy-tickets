@@ -28,23 +28,35 @@ export const useEvents = () => {
   const queryClient = useQueryClient();
 
   const fetchEvents = async () => {
+    console.log('Fetching all events...');
     const { data, error } = await supabase
       .from('events')
       .select('*')
       .order('date', { ascending: true });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Error fetching events:', error);
+      throw new Error(error.message);
+    }
+    
+    console.log('Events fetched:', data?.length || 0);
     return data as Event[];
   };
 
   const fetchEvent = async (id: string) => {
+    console.log('Fetching event with ID:', id);
     const { data, error } = await supabase
       .from('events')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Error fetching event:', error);
+      throw new Error(error.message);
+    }
+    
+    console.log('Event fetched:', data?.title);
     return data as Event;
   };
 
@@ -157,9 +169,11 @@ export const useEvents = () => {
   // Mutations
   const createEventMutation = useMutation({
     mutationFn: createEvent,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Event created successfully, invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['userEvents'] });
+      queryClient.invalidateQueries({ queryKey: ['event', data.id] });
       toast({
         title: 'Event created',
         description: 'Your event has been created successfully',
@@ -239,16 +253,19 @@ export const useEvents = () => {
     useEventsQuery: () => useQuery({
       queryKey: ['events'],
       queryFn: fetchEvents,
+      staleTime: 1000 * 60 * 5, // 5 minutes
     }),
     useEventQuery: (id: string) => useQuery({
       queryKey: ['event', id],
       queryFn: () => fetchEvent(id),
       enabled: !!id,
+      staleTime: 1000 * 60 * 5, // 5 minutes
     }),
     useUserEventsQuery: () => useQuery({
       queryKey: ['userEvents'],
       queryFn: fetchUserEvents,
       enabled: !!user,
+      staleTime: 1000 * 60 * 5, // 5 minutes
     }),
     // Mutations
     createEventMutation,
