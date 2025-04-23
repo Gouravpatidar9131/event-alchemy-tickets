@@ -137,7 +137,7 @@ export const useTickets = () => {
     if (eventData.creator_id) {
       const { data: creatorProfile, error: profileError } = await supabase
         .from('profiles')
-        .select(`wallet_address${currency === 'MONAD' ? ', monad_wallet_address' : ''}`)
+        .select('wallet_address, monad_wallet_address')
         .eq('id', eventData.creator_id)
         .single();
 
@@ -147,10 +147,10 @@ export const useTickets = () => {
       
       // Validate if profile record and appropriate wallet_address exist
       if (creatorProfile) {
-        if (currency === 'SOL' && typeof creatorProfile.wallet_address === "string" && creatorProfile.wallet_address.length > 0) {
+        if (currency === 'SOL' && creatorProfile.wallet_address) {
           recipientWallet = creatorProfile.wallet_address;
           console.log("Found creator Solana wallet address:", recipientWallet);
-        } else if (currency === 'MONAD' && typeof creatorProfile.monad_wallet_address === "string" && creatorProfile.monad_wallet_address.length > 0) {
+        } else if (currency === 'MONAD' && creatorProfile.monad_wallet_address) {
           recipientWallet = creatorProfile.monad_wallet_address;
           console.log("Found creator Monad wallet address:", recipientWallet);
         }

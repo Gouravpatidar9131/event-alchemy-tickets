@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useMonadWallet } from '@/providers/MonadProvider';
@@ -23,14 +22,7 @@ import {
 import { Ticket, Loader2, Coins } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
-
-interface PurchaseTicketModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  event: any;
-  selectedTicketType: number;
-  ticketQuantity: number;
-}
+import { cn } from "@/lib/utils";
 
 const NETWORK_FEE = 0.001;
 const MONAD_TO_SOL_RATE = 2; // 1 SOL = 2 MONAD (example rate)
@@ -147,7 +139,6 @@ const PurchaseTicketModal = ({
     }
   };
 
-  // Handle currency change with proper type assertion
   const handleCurrencyChange = (value: string) => {
     setSelectedCurrency(value as CurrencyType);
   };
