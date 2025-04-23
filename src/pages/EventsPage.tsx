@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -24,25 +25,12 @@ const EventsPage = () => {
   const [filteredEvents, setFilteredEvents] = useState<any[]>([]);
   const { toast } = useToast();
   const { useEventsQuery } = useEvents();
-  const { data: eventsData = [], isLoading, error, refetch } = useEventsQuery();
-
-  useEffect(() => {
-    // Initial fetch of events
-    console.log('Initial fetch of events');
-    refetch();
-  }, [refetch]);
+  const { data: eventsData = [], isLoading, refetch } = useEventsQuery();
 
   // Process events data to match the EventCard component format
   const processEvents = (events: any[]) => {
-    console.log('Processing events:', events.length);
     return events
-      .filter(event => {
-        const isPublished = event.is_published;
-        if (!isPublished) {
-          console.log(`Event ${event.id} (${event.title}) is not published, filtering out`);
-        }
-        return isPublished;
-      })
+      .filter(event => event.is_published)
       .map(event => {
         // Determine availability based on ticket sales
         let availability: "sold out" | "limited" | "available";
@@ -141,17 +129,6 @@ const EventsPage = () => {
       filterEvents();
     }
   }, [searchTerm, categoryFilter, availabilityFilter, eventsData]);
-
-  useEffect(() => {
-    if (error) {
-      console.error('Error fetching events:', error);
-      toast({
-        title: 'Error loading events',
-        description: 'There was a problem loading the events. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  }, [error, toast]);
 
   return (
     <div className="min-h-screen flex flex-col">
