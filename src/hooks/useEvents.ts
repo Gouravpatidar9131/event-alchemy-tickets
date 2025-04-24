@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -187,7 +186,6 @@ export const useEvents = () => {
     }
   };
 
-  // Mutations
   const createEventMutation = useMutation({
     mutationFn: createEvent,
     onSuccess: () => {
@@ -267,12 +265,39 @@ export const useEvents = () => {
     },
   });
 
-  return {
-    // Queries
-    useEventsQuery: () => useQuery({
+  const useEventsQuery = () => {
+    const query = useQuery({
       queryKey: ['events'],
       queryFn: fetchEvents,
-    }),
+    });
+
+    useEffect(() => {
+      const channel = supabase
+        .channel('events-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'events'
+          },
+          async (payload) => {
+            console.log('Real-time update received:', payload);
+            await query.refetch();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }, [query.refetch]);
+
+    return query;
+  };
+
+  return {
+    useEventsQuery,
     useEventQuery: (id: string) => useQuery({
       queryKey: ['event', id],
       queryFn: () => fetchEvent(id),
@@ -283,7 +308,6 @@ export const useEvents = () => {
       queryFn: fetchUserEvents,
       enabled: !!user,
     }),
-    // Mutations
     createEventMutation,
     updateEventMutation,
     publishEventMutation,

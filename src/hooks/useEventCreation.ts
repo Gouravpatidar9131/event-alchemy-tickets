@@ -4,6 +4,7 @@ import { useEvents } from './useEvents';
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useEventCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -37,7 +38,7 @@ export const useEventCreation = () => {
       console.log('Creating event with data:', eventData);
       
       const { isPublished, ...eventDataToCreate } = eventData;
-      
+
       // Create the event
       const createdEvent = await createEventMutation.mutateAsync(eventDataToCreate);
       console.log('Event created successfully:', createdEvent);
@@ -54,6 +55,24 @@ export const useEventCreation = () => {
       // Force refresh of the events queries
       await queryClient.invalidateQueries({ queryKey: ['events'] });
       await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
+
+      // Set up real-time subscription for this event
+      const channel = supabase.channel(`event-${createdEvent.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'events',
+            filter: `id=eq.${createdEvent.id}`
+          },
+          async (payload) => {
+            console.log('Real-time update received:', payload);
+            await queryClient.invalidateQueries({ queryKey: ['events'] });
+            await queryClient.invalidateQueries({ queryKey: ['event', createdEvent.id] });
+          }
+        )
+        .subscribe();
       
       toast({
         title: 'Event created',
