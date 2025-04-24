@@ -28,36 +28,54 @@ export const useEvents = () => {
   const queryClient = useQueryClient();
 
   const fetchEvents = async () => {
+    console.log('Fetching all events');
     const { data, error } = await supabase
       .from('events')
       .select('*')
       .order('date', { ascending: true });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Error fetching events:', error);
+      throw new Error(error.message);
+    }
+    console.log('Events fetched successfully:', data);
     return data as Event[];
   };
 
   const fetchEvent = async (id: string) => {
+    console.log(`Fetching event with id: ${id}`);
     const { data, error } = await supabase
       .from('events')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error(`Error fetching event ${id}:`, error);
+      throw new Error(error.message);
+    }
+    console.log('Event fetched successfully:', data);
     return data as Event;
   };
 
   const fetchUserEvents = async () => {
-    if (!user) return [];
+    if (!user) {
+      console.log('No user logged in, returning empty array for user events');
+      return [];
+    }
     
+    console.log(`Fetching events for user: ${user.id}`);
     const { data, error } = await supabase
       .from('events')
       .select('*')
       .eq('creator_id', user.id)
       .order('date', { ascending: true });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('Error fetching user events:', error);
+      throw new Error(error.message);
+    }
+    console.log('User events fetched successfully:', data);
     return data as Event[];
   };
 
@@ -95,6 +113,7 @@ export const useEvents = () => {
     if (!user) throw new Error('You must be logged in to update an event');
     
     try {
+      console.log(`Updating event ${id} with data:`, eventData);
       const { data, error } = await supabase
         .from('events')
         .update({
@@ -105,7 +124,11 @@ export const useEvents = () => {
         .select()
         .single();
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(`Error updating event ${id}:`, error);
+        throw new Error(error.message);
+      }
+      console.log('Event updated successfully:', data);
       return data as Event;
     } catch (error: any) {
       console.error("Error updating event:", error);
@@ -117,6 +140,7 @@ export const useEvents = () => {
     if (!user) throw new Error('You must be logged in to publish an event');
     
     try {
+      console.log(`Publishing event ${id}`);
       const { data, error } = await supabase
         .from('events')
         .update({
@@ -129,7 +153,11 @@ export const useEvents = () => {
         .select()
         .single();
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(`Error publishing event ${id}:`, error);
+        throw new Error(error.message);
+      }
+      console.log('Event published successfully:', data);
       return data as Event;
     } catch (error: any) {
       console.error("Error publishing event:", error);
@@ -141,12 +169,17 @@ export const useEvents = () => {
     if (!user) throw new Error('You must be logged in to delete an event');
     
     try {
+      console.log(`Deleting event ${id}`);
       const { error } = await supabase
         .from('events')
         .delete()
         .eq('id', id);
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(`Error deleting event ${id}:`, error);
+        throw new Error(error.message);
+      }
+      console.log(`Event ${id} deleted successfully`);
       return { id };
     } catch (error: any) {
       console.error("Error deleting event:", error);
