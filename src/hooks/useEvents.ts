@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 export type Event = {
   id: string;
@@ -27,7 +27,7 @@ export const useEvents = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     console.log('Fetching all events');
     const { data, error } = await supabase
       .from('events')
@@ -40,7 +40,7 @@ export const useEvents = () => {
     }
     console.log('Events fetched successfully:', data);
     return data as Event[];
-  };
+  }, []);
 
   const fetchEvent = async (id: string) => {
     console.log(`Fetching event with id: ${id}`);
@@ -189,9 +189,16 @@ export const useEvents = () => {
 
   const createEventMutation = useMutation({
     mutationFn: createEvent,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(['event', data.id], data);
+      
+      queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
+        return [...oldData, data];
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['userEvents'] });
+      
       toast({
         title: 'Event created',
         description: 'Your event has been created successfully',
@@ -266,6 +273,65 @@ export const useEvents = () => {
     },
   });
 
+  const setupRealtimeSubscription = useCallback(() => {
+    console.log('Setting up real-time subscription for events');
+    
+    const channel = supabase
+      .channel('events-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'events'
+        },
+        async (payload) => {
+          console.log('Real-time update received:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            console.log('New event inserted:', payload.new);
+            if (payload.new && payload.new.id) {
+              const newEvent = payload.new as Event;
+              
+              queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
+                if (oldData.some(event => event.id === newEvent.id)) {
+                  return oldData;
+                }
+                return [...oldData, newEvent];
+              });
+              
+              if (user && newEvent.creator_id === user.id) {
+                queryClient.setQueryData(['userEvents'], (oldData: Event[] = []) => {
+                  if (oldData.some(event => event.id === newEvent.id)) {
+                    return oldData;
+                  }
+                  return [...oldData, newEvent];
+                });
+              }
+            }
+          }
+          
+          await queryClient.invalidateQueries({ queryKey: ['events'] });
+          
+          if (payload.new && payload.new.id) {
+            await queryClient.invalidateQueries({ queryKey: ['event', payload.new.id] });
+          }
+          
+          if (payload.old && payload.old.id) {
+            await queryClient.invalidateQueries({ queryKey: ['event', payload.old.id] });
+          }
+          
+          await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Removing real-time subscription for events');
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, user]);
+
   const useEventsQuery = () => {
     const query = useQuery({
       queryKey: ['events'],
@@ -273,26 +339,9 @@ export const useEvents = () => {
     });
 
     useEffect(() => {
-      const channel = supabase
-        .channel('events-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'events'
-          },
-          async (payload) => {
-            console.log('Real-time update received:', payload);
-            await query.refetch();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }, [query.refetch]);
+      const cleanup = setupRealtimeSubscription();
+      return cleanup;
+    }, [setupRealtimeSubscription]);
 
     return query;
   };

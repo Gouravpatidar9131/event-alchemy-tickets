@@ -5,6 +5,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 export const useEventCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -12,6 +13,7 @@ export const useEventCreation = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const createEvent = async (eventData: {
     title: string;
@@ -52,10 +54,10 @@ export const useEventCreation = () => {
         console.log('Event published successfully');
       }
 
-      // Force refresh of the events queries
+      // Force immediate refresh of the events queries
       await queryClient.invalidateQueries({ queryKey: ['events'] });
       await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
-
+      
       // Set up real-time subscription for this event
       const channel = supabase.channel(`event-${createdEvent.id}`)
         .on(
@@ -67,9 +69,10 @@ export const useEventCreation = () => {
             filter: `id=eq.${createdEvent.id}`
           },
           async (payload) => {
-            console.log('Real-time update received:', payload);
+            console.log('Real-time update received for new event:', payload);
             await queryClient.invalidateQueries({ queryKey: ['events'] });
             await queryClient.invalidateQueries({ queryKey: ['event', createdEvent.id] });
+            await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
           }
         )
         .subscribe();
@@ -78,6 +81,19 @@ export const useEventCreation = () => {
         title: 'Event created',
         description: `Your event "${eventData.title}" has been ${isPublished ? 'created and published' : 'saved as draft'}`,
       });
+
+      // Navigate to events page after successful creation
+      if (isPublished) {
+        // Small delay to allow Supabase to update
+        setTimeout(() => {
+          navigate('/events');
+        }, 1500);
+      } else {
+        // If not published, go to dashboard
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
+      }
 
       return true;
     } catch (error: any) {

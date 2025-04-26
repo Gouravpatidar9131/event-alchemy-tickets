@@ -8,11 +8,13 @@ import { useEvents } from '@/hooks/useEvents';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
+import { useQueryClient } from '@tanstack/react-query';
 
 const FeaturedEvents = () => {
   const { useEventsQuery } = useEvents();
   const { data: events = [], refetch } = useEventsQuery();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Get top 4 published events, sorted by date
   const featuredEvents = events
@@ -67,6 +69,9 @@ const FeaturedEvents = () => {
           
           // Refetch events when changes occur
           await refetch();
+          
+          // Invalidate the events query to ensure fresh data
+          await queryClient.invalidateQueries({ queryKey: ['events'] });
 
           // Show toast notification for new events
           if (payload.eventType === 'INSERT') {
@@ -82,7 +87,7 @@ const FeaturedEvents = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch, toast]);
+  }, [refetch, toast, queryClient]);
 
   return (
     <section className="py-20 px-4">
