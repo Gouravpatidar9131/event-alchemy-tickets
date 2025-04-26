@@ -290,7 +290,7 @@ export const useEvents = () => {
           
           if (payload.eventType === 'INSERT') {
             console.log('New event inserted:', payload.new);
-            if (payload.new && payload.new.id) {
+            if (payload.new && typeof payload.new === 'object' && 'id' in payload.new) {
               const newEvent = payload.new as Event;
               
               queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
@@ -313,11 +313,11 @@ export const useEvents = () => {
           
           await queryClient.invalidateQueries({ queryKey: ['events'] });
           
-          if (payload.new && payload.new.id) {
+          if (payload.new && typeof payload.new === 'object' && 'id' in payload.new) {
             await queryClient.invalidateQueries({ queryKey: ['event', payload.new.id] });
           }
           
-          if (payload.old && payload.old.id) {
+          if (payload.old && typeof payload.old === 'object' && 'id' in payload.old) {
             await queryClient.invalidateQueries({ queryKey: ['event', payload.old.id] });
           }
           
