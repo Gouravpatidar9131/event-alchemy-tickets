@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -32,7 +33,7 @@ export const useEvents = () => {
     const { data, error } = await supabase
       .from('events')
       .select('*')
-      .order('date', { ascending: true });
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching events:', error);
@@ -69,7 +70,7 @@ export const useEvents = () => {
       .from('events')
       .select('*')
       .eq('creator_id', user.id)
-      .order('date', { ascending: true });
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching user events:', error);
@@ -193,7 +194,7 @@ export const useEvents = () => {
       queryClient.setQueryData(['event', data.id], data);
       
       queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
-        return [...oldData, data];
+        return [data, ...oldData];
       });
       
       queryClient.invalidateQueries({ queryKey: ['events'] });
@@ -277,7 +278,7 @@ export const useEvents = () => {
     console.log('Setting up real-time subscription for events');
     
     const channel = supabase
-      .channel('events-changes')
+      .channel('events-realtime-updates')
       .on(
         'postgres_changes',
         {
@@ -286,41 +287,54 @@ export const useEvents = () => {
           table: 'events'
         },
         async (payload) => {
-          console.log('Real-time update received:', payload);
+          console.log('Real-time update received in useEvents:', payload);
           
-          if (payload.eventType === 'INSERT') {
-            console.log('New event inserted:', payload.new);
-            if (payload.new && typeof payload.new === 'object' && 'id' in payload.new) {
-              const newEvent = payload.new as Event;
-              
-              queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
+          // Optimistic updates for better UX
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newEvent = payload.new as Event;
+            
+            queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
+              // Avoid duplicates
+              if (oldData.some(event => event.id === newEvent.id)) {
+                return oldData;
+              }
+              return [newEvent, ...oldData];
+            });
+            
+            if (user && newEvent.creator_id === user.id) {
+              queryClient.setQueryData(['userEvents'], (oldData: Event[] = []) => {
                 if (oldData.some(event => event.id === newEvent.id)) {
                   return oldData;
                 }
-                return [...oldData, newEvent];
+                return [newEvent, ...oldData];
               });
-              
-              if (user && newEvent.creator_id === user.id) {
-                queryClient.setQueryData(['userEvents'], (oldData: Event[] = []) => {
-                  if (oldData.some(event => event.id === newEvent.id)) {
-                    return oldData;
-                  }
-                  return [...oldData, newEvent];
-                });
-              }
             }
           }
           
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            const updatedEvent = payload.new as Event;
+            
+            queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
+              return oldData.map(event => 
+                event.id === updatedEvent.id ? updatedEvent : event
+              );
+            });
+            
+            queryClient.setQueryData(['event', updatedEvent.id], updatedEvent);
+          }
+          
+          if (payload.eventType === 'DELETE' && payload.old) {
+            const deletedEvent = payload.old as Event;
+            
+            queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
+              return oldData.filter(event => event.id !== deletedEvent.id);
+            });
+            
+            queryClient.removeQueries({ queryKey: ['event', deletedEvent.id] });
+          }
+          
+          // Ensure data consistency
           await queryClient.invalidateQueries({ queryKey: ['events'] });
-          
-          if (payload.new && typeof payload.new === 'object' && 'id' in payload.new) {
-            await queryClient.invalidateQueries({ queryKey: ['event', payload.new.id] });
-          }
-          
-          if (payload.old && typeof payload.old === 'object' && 'id' in payload.old) {
-            await queryClient.invalidateQueries({ queryKey: ['event', payload.old.id] });
-          }
-          
           await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
         }
       )
@@ -336,6 +350,8 @@ export const useEvents = () => {
     const query = useQuery({
       queryKey: ['events'],
       queryFn: fetchEvents,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: true,
     });
 
     useEffect(() => {

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import EventCard from '@/components/EventCard';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
@@ -93,7 +94,7 @@ const EventsPage = () => {
 
   useEffect(() => {
     // Subscribe to real-time updates
-    const channel = supabase.channel('events-page-changes')
+    const channel = supabase.channel('events-page-realtime')
       .on(
         'postgres_changes',
         {
@@ -107,11 +108,18 @@ const EventsPage = () => {
           // Refetch events when database changes occur
           await refetch();
           
-          // Show notification for new events
-          if (payload.eventType === 'INSERT') {
+          // Show notification for new published events
+          if (payload.eventType === 'INSERT' && payload.new && payload.new.is_published) {
             toast({
-              title: 'New Event Added',
-              description: `A new event has been added to the list.`,
+              title: 'New Event Available',
+              description: `A new event "${payload.new.title}" is now available!`,
+            });
+          }
+
+          if (payload.eventType === 'UPDATE' && payload.new && payload.new.is_published && payload.old && !payload.old.is_published) {
+            toast({
+              title: 'Event Published',
+              description: `"${payload.new.title}" is now live!`,
             });
           }
         }
@@ -182,35 +190,44 @@ const EventsPage = () => {
             </div>
           </div>
           
-          {isLoading ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-xl text-muted-foreground">Loading events...</p>
-            </div>
-          ) : filteredEvents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {filteredEvents.map((event) => (
-                <EventCard 
-                  key={event.id}
-                  {...event}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <p className="text-xl text-muted-foreground">No events found matching your criteria.</p>
-              <Button 
-                variant="outline" 
-                className="mt-4 glass-button"
-                onClick={() => {
-                  setSearchTerm('');
-                  setCategoryFilter('all');
-                  setAvailabilityFilter('all');
-                }}
-              >
-                Reset Filters
-              </Button>
-            </div>
-          )}
+          <ScrollArea className="h-[calc(100vh-280px)]">
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-4">
+                {[...Array(8)].map((_, index) => (
+                  <div key={index} className="glass-card rounded-xl h-96 animate-pulse bg-muted/50" />
+                ))}
+              </div>
+            ) : filteredEvents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-4">
+                {filteredEvents.map((event) => (
+                  <EventCard 
+                    key={event.id}
+                    {...event}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-xl text-muted-foreground">
+                  {eventsData.length === 0 
+                    ? "No events have been created yet. Be the first to create one!" 
+                    : "No events found matching your criteria."
+                  }
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4 glass-button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCategoryFilter('all');
+                    setAvailabilityFilter('all');
+                  }}
+                >
+                  Reset Filters
+                </Button>
+              </div>
+            )}
+          </ScrollArea>
         </div>
       </main>
       <Footer />
