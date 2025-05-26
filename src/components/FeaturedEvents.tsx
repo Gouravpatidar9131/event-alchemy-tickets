@@ -68,9 +68,15 @@ const FeaturedEvents = () => {
         async (payload) => {
           console.log('Real-time update received in Featured Events:', payload);
           
-          // Immediately invalidate and refetch events
-          await queryClient.invalidateQueries({ queryKey: ['events'] });
-          await refetch();
+          // Only invalidate and refetch if queryClient is available
+          if (queryClient) {
+            try {
+              await queryClient.invalidateQueries({ queryKey: ['events'] });
+              await refetch();
+            } catch (error) {
+              console.error('Error handling real-time update:', error);
+            }
+          }
 
           // Show toast notification for new published events
           if (payload.eventType === 'INSERT' && payload.new && payload.new.is_published) {
@@ -129,25 +135,23 @@ const FeaturedEvents = () => {
           </Button>
         </div>
         
-        <ScrollArea className="w-full">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-4">
-            {featuredEvents.length > 0 ? (
-              featuredEvents.map((event) => (
-                <EventCard 
-                  key={event.id}
-                  {...event}
-                />
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">No published events available yet. Create and publish the first event!</p>
-                <Button asChild className="mt-4">
-                  <Link to="/create">Create Event</Link>
-                </Button>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {featuredEvents.length > 0 ? (
+            featuredEvents.map((event) => (
+              <EventCard 
+                key={event.id}
+                {...event}
+              />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-muted-foreground">No published events available yet. Create and publish the first event!</p>
+              <Button asChild className="mt-4">
+                <Link to="/create">Create Event</Link>
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

@@ -14,7 +14,16 @@ import DashboardPage from "./pages/DashboardPage";
 import CreateEventPage from "./pages/CreateEventPage";
 import AuthPage from "./pages/AuthPage";
 
-const queryClient = new QueryClient();
+// Create a stable query client instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+      retry: 3,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
