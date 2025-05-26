@@ -54,46 +54,26 @@ export const useEventCreation = () => {
         console.log('Event published successfully');
       }
 
-      // Force immediate refresh of the events queries
+      // Force immediate refresh of all events queries
       await queryClient.invalidateQueries({ queryKey: ['events'] });
       await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
       
-      // Set up real-time subscription for this event
-      const channel = supabase.channel(`event-${createdEvent.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'events',
-            filter: `id=eq.${createdEvent.id}`
-          },
-          async (payload) => {
-            console.log('Real-time update received for new event:', payload);
-            await queryClient.invalidateQueries({ queryKey: ['events'] });
-            await queryClient.invalidateQueries({ queryKey: ['event', createdEvent.id] });
-            await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
-          }
-        )
-        .subscribe();
+      // Force refetch to ensure data is fresh
+      await queryClient.refetchQueries({ queryKey: ['events'] });
       
       toast({
         title: 'Event created',
         description: `Your event "${eventData.title}" has been ${isPublished ? 'created and published' : 'saved as draft'}`,
       });
 
-      // Navigate to events page after successful creation
-      if (isPublished) {
-        // Small delay to allow Supabase to update
-        setTimeout(() => {
+      // Navigate with a slight delay to ensure data is updated
+      setTimeout(() => {
+        if (isPublished) {
           navigate('/events');
-        }, 1500);
-      } else {
-        // If not published, go to dashboard
-        setTimeout(() => {
+        } else {
           navigate('/dashboard');
-        }, 1500);
-      }
+        }
+      }, 1000);
 
       return true;
     } catch (error: any) {

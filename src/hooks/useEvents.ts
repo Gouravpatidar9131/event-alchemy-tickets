@@ -191,12 +191,20 @@ export const useEvents = () => {
   const createEventMutation = useMutation({
     mutationFn: createEvent,
     onSuccess: (data) => {
+      // Optimistically update the cache
       queryClient.setQueryData(['event', data.id], data);
       
+      // Add to events list cache
       queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
         return [data, ...oldData];
       });
       
+      // Add to user events cache
+      queryClient.setQueryData(['userEvents'], (oldData: Event[] = []) => {
+        return [data, ...oldData];
+      });
+      
+      // Force refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['userEvents'] });
       
@@ -217,9 +225,24 @@ export const useEvents = () => {
   const updateEventMutation = useMutation({
     mutationFn: updateEvent,
     onSuccess: (data) => {
+      // Update individual event cache
+      queryClient.setQueryData(['event', data.id], data);
+      
+      // Update events list cache
+      queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
+        return oldData.map(event => event.id === data.id ? data : event);
+      });
+      
+      // Update user events cache
+      queryClient.setQueryData(['userEvents'], (oldData: Event[] = []) => {
+        return oldData.map(event => event.id === data.id ? data : event);
+      });
+      
+      // Force refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['event', data.id] });
       queryClient.invalidateQueries({ queryKey: ['userEvents'] });
+      
       toast({
         title: 'Event updated',
         description: 'Your event has been updated successfully',
@@ -238,9 +261,22 @@ export const useEvents = () => {
     mutationFn: ({ id, mintAddress, candyMachineId }: { id: string, mintAddress?: string, candyMachineId?: string }) => 
       publishEvent(id, mintAddress, candyMachineId),
     onSuccess: (data) => {
+      // Update all relevant caches
+      queryClient.setQueryData(['event', data.id], data);
+      
+      queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
+        return oldData.map(event => event.id === data.id ? data : event);
+      });
+      
+      queryClient.setQueryData(['userEvents'], (oldData: Event[] = []) => {
+        return oldData.map(event => event.id === data.id ? data : event);
+      });
+      
+      // Force refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['event', data.id] });
       queryClient.invalidateQueries({ queryKey: ['userEvents'] });
+      
       toast({
         title: 'Event published',
         description: 'Your event is now live and tickets can be purchased',
@@ -333,9 +369,8 @@ export const useEvents = () => {
             queryClient.removeQueries({ queryKey: ['event', deletedEvent.id] });
           }
           
-          // Ensure data consistency
-          await queryClient.invalidateQueries({ queryKey: ['events'] });
-          await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
+          // Force refetch for consistency
+          await queryClient.refetchQueries({ queryKey: ['events'] });
         }
       )
       .subscribe();
@@ -350,8 +385,9 @@ export const useEvents = () => {
     const query = useQuery({
       queryKey: ['events'],
       queryFn: fetchEvents,
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 30, // 30 seconds
       refetchOnWindowFocus: true,
+      refetchInterval: 1000 * 60, // Refetch every minute
     });
 
     useEffect(() => {

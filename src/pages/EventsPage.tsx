@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import EventCard from '@/components/EventCard';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
@@ -133,10 +132,13 @@ const EventsPage = () => {
 
   // Initial load and when filters change
   useEffect(() => {
-    if (eventsData.length > 0) {
-      filterEvents();
-    }
+    filterEvents();
   }, [searchTerm, categoryFilter, availabilityFilter, eventsData]);
+
+  // Force refetch when component mounts
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -190,7 +192,7 @@ const EventsPage = () => {
             </div>
           </div>
           
-          <ScrollArea className="h-[calc(100vh-280px)]">
+          <div className="min-h-[400px]">
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-4">
                 {[...Array(8)].map((_, index) => (
@@ -227,7 +229,7 @@ const EventsPage = () => {
                 </Button>
               </div>
             )}
-          </ScrollArea>
+          </div>
         </div>
       </main>
       <Footer />
