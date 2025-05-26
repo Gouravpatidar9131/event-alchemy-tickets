@@ -1,10 +1,10 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { initializeMetaplex, createNFTTicket, updateNFTTicketStatus } from '@/utils/metaplex';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useMonadWallet } from '@/providers/MonadProvider';
 import { toast } from '@/components/ui/sonner';
 import { Connection, PublicKey, LAMPORTS_PER_SOL, Transaction, SystemProgram } from '@solana/web3.js';
 
@@ -24,7 +24,6 @@ export type Ticket = {
 export const useTickets = () => {
   const { user } = useAuth();
   const solanaWallet = useWallet();
-  const monadWallet = useMonadWallet();
   const { toast: uiToast } = useToast();
   const queryClient = useQueryClient();
 
@@ -103,17 +102,15 @@ export const useTickets = () => {
     eventDetails: any;
     ticketType: string;
     price: number;
-    currency: 'SOL' | 'MONAD';
+    currency: 'SOL';
     imageBuffer: ArrayBuffer;
   }) => {
     if (!user) throw new Error('You must be logged in to purchase a ticket');
     
-    const isValidWallet = 
-      (currency === 'SOL' && solanaWallet.connected && solanaWallet.publicKey && solanaWallet.sendTransaction) ||
-      (currency === 'MONAD' && monadWallet.connected && monadWallet.publicKey);
+    const isValidWallet = solanaWallet.connected && solanaWallet.publicKey && solanaWallet.sendTransaction;
     
     if (!isValidWallet) {
-      throw new Error(`Your ${currency} wallet must be connected`);
+      throw new Error(`Your SOL wallet must be connected`);
     }
 
     let recipientWallet: string | undefined = undefined;
@@ -136,7 +133,7 @@ export const useTickets = () => {
     if (eventData.creator_id) {
       const { data: creatorProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('wallet_address, monad_wallet_address')
+        .select('wallet_address')
         .eq('id', eventData.creator_id)
         .single();
 
@@ -145,32 +142,27 @@ export const useTickets = () => {
       }
       
       if (creatorProfile && typeof creatorProfile === 'object' && creatorProfile !== null) {
-        if (currency === 'SOL' && creatorProfile.wallet_address) {
+        if (creatorProfile.wallet_address) {
           recipientWallet = creatorProfile.wallet_address;
           console.log("Found creator Solana wallet address:", recipientWallet);
-        } else if (currency === 'MONAD' && creatorProfile.monad_wallet_address) {
-          recipientWallet = creatorProfile.monad_wallet_address;
-          console.log("Found creator Monad wallet address:", recipientWallet);
         }
       }
     }
 
     // Fallback to event details if no wallet address found in profile
     if (!recipientWallet) {
-      recipientWallet = currency === 'SOL' 
-        ? (eventDetails.wallet_address || eventDetails.organizer_wallet)
-        : (eventDetails.monad_wallet_address || eventDetails.organizer_monad_wallet);
-      console.log(`Using fallback ${currency} wallet address:`, recipientWallet);
+      recipientWallet = eventDetails.wallet_address || eventDetails.organizer_wallet;
+      console.log(`Using fallback SOL wallet address:`, recipientWallet);
     }
 
     if (!recipientWallet) {
-      throw new Error(`Event organizer's ${currency} wallet address not found. Ask the event creator to set their ${currency} wallet address on their profile.`);
+      throw new Error(`Event organizer's SOL wallet address not found. Ask the event creator to set their SOL wallet address on their profile.`);
     }
 
-    console.log(`Sending ${currency} payment to recipient:`, recipientWallet);
+    console.log(`Sending SOL payment to recipient:`, recipientWallet);
 
-    // Process payment based on selected currency
-    if (currency === 'SOL' && solanaWallet.publicKey && solanaWallet.sendTransaction) {
+    // Process Solana payment
+    if (solanaWallet.publicKey && solanaWallet.sendTransaction) {
       const connection = new Connection('https://api.devnet.solana.com', 'confirmed');
       const recipientPubkey = new PublicKey(recipientWallet);
       const amountLamports = Math.floor(Number(price) * LAMPORTS_PER_SOL);
@@ -199,15 +191,6 @@ export const useTickets = () => {
       } catch (error: any) {
         console.error("Solana Payment Error:", error);
         throw new Error('Failed to send SOL payment: ' + (error.message || error));
-      }
-    } else if (currency === 'MONAD' && monadWallet.publicKey) {
-      try {
-        // Use our custom MonadWallet sendTransaction method
-        const txHash = await monadWallet.sendTransaction(price, recipientWallet);
-        console.log('Monad transaction successful:', txHash);
-      } catch (error: any) {
-        console.error("Monad Payment Error:", error);
-        throw new Error('Failed to send MONAD payment: ' + (error.message || error));
       }
     }
 
