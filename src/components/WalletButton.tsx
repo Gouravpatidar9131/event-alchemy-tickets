@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { useWalletConnection } from '@/hooks/useWalletConnection';
 import { useAuth } from '@/providers/AuthProvider';
 import { Link } from 'react-router-dom';
-import MonadWalletButton from './MonadWalletButton';
 
 const WalletButton = () => {
   const { connected, publicKey } = useWallet();
@@ -32,10 +31,8 @@ const WalletButton = () => {
         connected ? 'bg-green-500 hover:bg-green-600' : 'glass-button'
       )}>
         <Wallet className="w-4 h-4" />
-        {connected ? 'Solana' : 'Connect Solana'}
+        {connected ? 'Connected' : 'Connect Wallet'}
       </WalletMultiButton>
-      
-      <MonadWalletButton />
     </div>
   );
 };

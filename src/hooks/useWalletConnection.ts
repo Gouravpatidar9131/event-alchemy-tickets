@@ -1,13 +1,11 @@
 
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useMonadWallet } from '@/providers/MonadProvider';
 import { useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useWalletConnection = () => {
-  const { connected: solanaConnected, publicKey: solanaPublicKey, disconnect: disconnectSolana } = useWallet();
-  const { connected: monadConnected, publicKey: monadPublicKey, disconnect: disconnectMonad } = useMonadWallet();
+  const { connected, publicKey, disconnect } = useWallet();
   const { toast } = useToast();
 
   const updateUserProfile = useCallback(async () => {
@@ -17,12 +15,8 @@ export const useWalletConnection = () => {
 
       const updates: Record<string, any> = {};
       
-      if (solanaConnected && solanaPublicKey) {
-        updates.wallet_address = solanaPublicKey.toString();
-      }
-      
-      if (monadConnected && monadPublicKey) {
-        updates.monad_wallet_address = monadPublicKey;
+      if (connected && publicKey) {
+        updates.wallet_address = publicKey.toString();
       }
       
       if (Object.keys(updates).length === 0) return;
@@ -46,27 +40,15 @@ export const useWalletConnection = () => {
         variant: 'destructive',
       });
     }
-  }, [solanaPublicKey, monadPublicKey, solanaConnected, monadConnected, toast]);
+  }, [publicKey, connected, toast]);
 
-  const handleDisconnect = useCallback(async (walletType: 'solana' | 'monad' | 'both' = 'both') => {
+  const handleDisconnect = useCallback(async () => {
     try {
-      const updates: Record<string, any> = {};
+      await disconnect();
       
-      if (walletType === 'solana' || walletType === 'both') {
-        await disconnectSolana();
-        updates.wallet_address = null;
-      }
-      
-      if (walletType === 'monad' || walletType === 'both') {
-        await disconnectMonad();
-        updates.monad_wallet_address = null;
-      }
-      
-      if (Object.keys(updates).length === 0) return;
-
       const { error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update({ wallet_address: null })
         .eq('id', (await supabase.auth.getUser()).data.user?.id);
 
       if (error) throw error;
@@ -83,13 +65,11 @@ export const useWalletConnection = () => {
         variant: 'destructive',
       });
     }
-  }, [disconnectSolana, disconnectMonad, toast]);
+  }, [disconnect, toast]);
 
   return {
-    solanaConnected,
-    solanaPublicKey,
-    monadConnected,
-    monadPublicKey,
+    connected,
+    publicKey,
     updateUserProfile,
     handleDisconnect,
   };
