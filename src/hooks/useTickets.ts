@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
-import { Connection, PublicKey } from '@solana/web3.js';
 
 export interface Ticket {
   id: string;
@@ -67,6 +66,22 @@ export const useTickets = () => {
     console.log('User tickets fetched successfully:', data);
     return data as Ticket[];
   }, [user]);
+
+  const fetchEventTickets = useCallback(async (eventId: string) => {
+    console.log(`Fetching tickets for event: ${eventId}`);
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('purchase_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching event tickets:', error);
+      throw new Error(error.message);
+    }
+    console.log('Event tickets fetched successfully:', data);
+    return data as Ticket[];
+  }, []);
 
   const purchaseTicket = async (params: PurchaseTicketParams) => {
     if (!user) throw new Error('You must be logged in to purchase tickets');
@@ -150,11 +165,18 @@ export const useTickets = () => {
     enabled: !!user,
   });
 
+  const useEventTicketsQuery = (eventId: string) => useQuery({
+    queryKey: ['eventTickets', eventId],
+    queryFn: () => fetchEventTickets(eventId),
+    enabled: !!eventId,
+  });
+
   const purchaseTicketMutation = useMutation({
     mutationFn: purchaseTicket,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['userTickets'] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['eventTickets'] });
       toast({
         title: 'Ticket purchased',
         description: 'Your ticket has been purchased successfully',
@@ -173,6 +195,7 @@ export const useTickets = () => {
     mutationFn: checkInTicket,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['userTickets'] });
+      queryClient.invalidateQueries({ queryKey: ['eventTickets'] });
       toast({
         title: 'Ticket checked in',
         description: 'Ticket has been successfully checked in',
@@ -189,6 +212,7 @@ export const useTickets = () => {
 
   return {
     useUserTicketsQuery,
+    useEventTicketsQuery,
     purchaseTicketMutation,
     checkInTicketMutation,
   };
