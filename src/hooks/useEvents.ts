@@ -29,7 +29,7 @@ export const useEvents = () => {
   const queryClient = useQueryClient();
 
   const fetchEvents = useCallback(async () => {
-    console.log('Fetching all events');
+    console.log('Fetching all events from database');
     const { data, error } = await supabase
       .from('events')
       .select('*')
@@ -39,12 +39,16 @@ export const useEvents = () => {
       console.error('Error fetching events:', error);
       throw new Error(error.message);
     }
-    console.log('Events fetched successfully:', data);
+    console.log('Events fetched successfully:', data?.length, 'events');
     return data as Event[];
   }, []);
 
   const fetchEvent = async (id: string) => {
     console.log(`Fetching event with id: ${id}`);
+    if (!id) {
+      throw new Error('Event ID is required');
+    }
+    
     const { data, error } = await supabase
       .from('events')
       .select('*')
@@ -53,7 +57,7 @@ export const useEvents = () => {
 
     if (error) {
       console.error(`Error fetching event ${id}:`, error);
-      throw new Error(error.message);
+      throw new Error(`Event not found: ${error.message}`);
     }
     console.log('Event fetched successfully:', data);
     return data as Event;
@@ -76,7 +80,7 @@ export const useEvents = () => {
       console.error('Error fetching user events:', error);
       throw new Error(error.message);
     }
-    console.log('User events fetched successfully:', data);
+    console.log('User events fetched successfully:', data?.length, 'events');
     return data as Event[];
   };
 
@@ -191,22 +195,22 @@ export const useEvents = () => {
   const createEventMutation = useMutation({
     mutationFn: createEvent,
     onSuccess: (data) => {
+      console.log('Create event mutation success:', data.id);
+      
       // Optimistically update the cache
       queryClient.setQueryData(['event', data.id], data);
       
       // Add to events list cache
       queryClient.setQueryData(['events'], (oldData: Event[] = []) => {
-        return [data, ...oldData];
+        const filtered = oldData.filter(event => event.id !== data.id);
+        return [data, ...filtered];
       });
       
       // Add to user events cache
       queryClient.setQueryData(['userEvents'], (oldData: Event[] = []) => {
-        return [data, ...oldData];
+        const filtered = oldData.filter(event => event.id !== data.id);
+        return [data, ...filtered];
       });
-      
-      // Force refetch to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['events'] });
-      queryClient.invalidateQueries({ queryKey: ['userEvents'] });
       
       toast({
         title: 'Event created',
@@ -214,6 +218,7 @@ export const useEvents = () => {
       });
     },
     onError: (error: any) => {
+      console.error('Create event mutation error:', error);
       toast({
         title: 'Error creating event',
         description: error.message,
@@ -225,6 +230,8 @@ export const useEvents = () => {
   const updateEventMutation = useMutation({
     mutationFn: updateEvent,
     onSuccess: (data) => {
+      console.log('Update event mutation success:', data.id);
+      
       // Update individual event cache
       queryClient.setQueryData(['event', data.id], data);
       
@@ -249,6 +256,7 @@ export const useEvents = () => {
       });
     },
     onError: (error: any) => {
+      console.error('Update event mutation error:', error);
       toast({
         title: 'Error updating event',
         description: error.message,
@@ -261,6 +269,8 @@ export const useEvents = () => {
     mutationFn: ({ id, mintAddress, candyMachineId }: { id: string, mintAddress?: string, candyMachineId?: string }) => 
       publishEvent(id, mintAddress, candyMachineId),
     onSuccess: (data) => {
+      console.log('Publish event mutation success:', data.id);
+      
       // Update all relevant caches
       queryClient.setQueryData(['event', data.id], data);
       
@@ -283,6 +293,7 @@ export const useEvents = () => {
       });
     },
     onError: (error: any) => {
+      console.error('Publish event mutation error:', error);
       toast({
         title: 'Error publishing event',
         description: error.message,
@@ -385,9 +396,11 @@ export const useEvents = () => {
     const query = useQuery({
       queryKey: ['events'],
       queryFn: fetchEvents,
-      staleTime: 1000 * 30, // 30 seconds
+      staleTime: 1000 * 10, // 10 seconds - shorter stale time for fresher data
       refetchOnWindowFocus: true,
-      refetchInterval: 1000 * 60, // Refetch every minute
+      refetchInterval: 1000 * 30, // Refetch every 30 seconds
+      retry: 3,
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     });
 
     useEffect(() => {
@@ -404,11 +417,15 @@ export const useEvents = () => {
       queryKey: ['event', id],
       queryFn: () => fetchEvent(id),
       enabled: !!id,
+      retry: 3,
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     }),
     useUserEventsQuery: () => useQuery({
       queryKey: ['userEvents'],
       queryFn: fetchUserEvents,
       enabled: !!user,
+      staleTime: 1000 * 10,
+      refetchOnWindowFocus: true,
     }),
     createEventMutation,
     updateEventMutation,

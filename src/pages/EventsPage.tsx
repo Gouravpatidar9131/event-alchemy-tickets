@@ -25,12 +25,16 @@ const EventsPage = () => {
   const [filteredEvents, setFilteredEvents] = useState<any[]>([]);
   const { toast } = useToast();
   const { useEventsQuery } = useEvents();
-  const { data: eventsData = [], isLoading, refetch } = useEventsQuery();
+  const { data: eventsData = [], isLoading, refetch, error } = useEventsQuery();
 
   // Process events data to match the EventCard component format
   const processEvents = (events: any[]) => {
+    console.log('Processing events:', events);
     return events
-      .filter(event => event.is_published)
+      .filter(event => {
+        console.log('Event filter check:', event.id, 'is_published:', event.is_published);
+        return event.is_published === true;
+      })
       .map(event => {
         // Determine availability based on ticket sales
         let availability: "sold out" | "limited" | "available";
@@ -64,7 +68,9 @@ const EventsPage = () => {
 
   // Filter events based on search term and filters
   const filterEvents = () => {
+    console.log('Filtering events, raw data:', eventsData);
     const allEvents = processEvents(eventsData);
+    console.log('Processed events:', allEvents);
     
     const matchesSearch = (event: any) =>
       event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,6 +89,7 @@ const EventsPage = () => {
       (event: any) => matchesSearch(event) && matchesCategory(event) && matchesAvailability(event)
     );
 
+    console.log('Filtered events result:', newFilteredEvents);
     setFilteredEvents(newFilteredEvents);
   };
 
@@ -92,6 +99,8 @@ const EventsPage = () => {
     : ['Technology', 'Music', 'Art', 'Business', 'Gaming', 'Networking'];
 
   useEffect(() => {
+    console.log('Setting up real-time subscription for EventsPage');
+    
     // Subscribe to real-time updates
     const channel = supabase.channel('events-page-realtime')
       .on(
@@ -105,7 +114,12 @@ const EventsPage = () => {
           console.log('Real-time update received in Events Page:', payload);
           
           // Refetch events when database changes occur
-          await refetch();
+          try {
+            await refetch();
+            console.log('Events refetched successfully after real-time update');
+          } catch (error) {
+            console.error('Error refetching events:', error);
+          }
           
           // Show notification for new published events
           if (payload.eventType === 'INSERT' && payload.new && payload.new.is_published) {
@@ -126,19 +140,42 @@ const EventsPage = () => {
       .subscribe();
 
     return () => {
+      console.log('Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   }, [refetch, toast]);
 
-  // Initial load and when filters change
+  // Filter events when dependencies change
   useEffect(() => {
+    console.log('Dependencies changed, filtering events');
     filterEvents();
   }, [searchTerm, categoryFilter, availabilityFilter, eventsData]);
 
-  // Force refetch when component mounts
+  // Force refetch when component mounts and periodically
   useEffect(() => {
+    console.log('EventsPage mounted, forcing initial refetch');
     refetch();
+    
+    // Set up periodic refetch every 30 seconds to ensure fresh data
+    const interval = setInterval(() => {
+      console.log('Periodic refetch triggered');
+      refetch();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [refetch]);
+
+  // Log errors
+  useEffect(() => {
+    if (error) {
+      console.error('Events query error:', error);
+      toast({
+        title: 'Error loading events',
+        description: 'Failed to load events. Please try refreshing the page.',
+        variant: 'destructive',
+      });
+    }
+  }, [error, toast]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -198,6 +235,22 @@ const EventsPage = () => {
                 {[...Array(8)].map((_, index) => (
                   <div key={index} className="glass-card rounded-xl h-96 animate-pulse bg-muted/50" />
                 ))}
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-xl text-destructive">
+                  Error loading events: {error.message}
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4 glass-button"
+                  onClick={() => {
+                    console.log('Manual refetch triggered');
+                    refetch();
+                  }}
+                >
+                  Try Again
+                </Button>
               </div>
             ) : filteredEvents.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-4">

@@ -52,6 +52,13 @@ export const useEventCreation = () => {
           id: createdEvent.id 
         });
         console.log('Event published successfully');
+        
+        // Force immediate cache invalidation and refetch for published events
+        await queryClient.invalidateQueries({ queryKey: ['events'] });
+        await queryClient.refetchQueries({ queryKey: ['events'] });
+        
+        // Wait a bit more to ensure database is updated
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
       // Force immediate refresh of all events queries
@@ -66,14 +73,16 @@ export const useEventCreation = () => {
         description: `Your event "${eventData.title}" has been ${isPublished ? 'created and published' : 'saved as draft'}`,
       });
 
-      // Navigate with a slight delay to ensure data is updated
+      // Navigate with a longer delay to ensure data is fully updated
       setTimeout(() => {
         if (isPublished) {
+          console.log('Navigating to events page');
           navigate('/events');
         } else {
+          console.log('Navigating to dashboard');
           navigate('/dashboard');
         }
-      }, 1000);
+      }, isPublished ? 3000 : 1000);
 
       return true;
     } catch (error: any) {
