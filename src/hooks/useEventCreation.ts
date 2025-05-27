@@ -4,12 +4,11 @@ import { useEvents } from './useEvents';
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
 export const useEventCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
-  const { createEventMutation, publishEventMutation } = useEvents();
+  const { createEventMutation } = useEvents();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -24,7 +23,6 @@ export const useEventCreation = () => {
     total_tickets: number;
     image_url: string;
     category?: string;
-    isPublished?: boolean;
   }) => {
     if (!user) {
       toast({
@@ -39,50 +37,30 @@ export const useEventCreation = () => {
     try {
       console.log('Creating event with data:', eventData);
       
-      const { isPublished, ...eventDataToCreate } = eventData;
-
-      // Create the event
-      const createdEvent = await createEventMutation.mutateAsync(eventDataToCreate);
-      console.log('Event created successfully:', createdEvent);
+      // Create the event (will be published by default due to database setting)
+      const createdEvent = await createEventMutation.mutateAsync(eventData);
+      console.log('Event created and published successfully:', createdEvent);
       
-      // If requested, publish the event right away
-      if (isPublished && createdEvent) {
-        console.log('Publishing event:', createdEvent.id);
-        await publishEventMutation.mutateAsync({ 
-          id: createdEvent.id 
-        });
-        console.log('Event published successfully');
-        
-        // Force immediate cache invalidation and refetch for published events
-        await queryClient.invalidateQueries({ queryKey: ['events'] });
-        await queryClient.refetchQueries({ queryKey: ['events'] });
-        
-        // Wait a bit more to ensure database is updated
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-
-      // Force immediate refresh of all events queries
+      // Force immediate cache invalidation and refetch for events
       await queryClient.invalidateQueries({ queryKey: ['events'] });
-      await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
-      
-      // Force refetch to ensure data is fresh
       await queryClient.refetchQueries({ queryKey: ['events'] });
+      
+      // Wait a bit to ensure database is updated
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Force immediate refresh of all events queries
+      await queryClient.invalidateQueries({ queryKey: ['userEvents'] });
       
       toast({
         title: 'Event created',
-        description: `Your event "${eventData.title}" has been ${isPublished ? 'created and published' : 'saved as draft'}`,
+        description: `Your event "${eventData.title}" has been created and published successfully`,
       });
 
-      // Navigate with a longer delay to ensure data is fully updated
+      // Navigate to events page to see the published event
       setTimeout(() => {
-        if (isPublished) {
-          console.log('Navigating to events page');
-          navigate('/events');
-        } else {
-          console.log('Navigating to dashboard');
-          navigate('/dashboard');
-        }
-      }, isPublished ? 3000 : 1000);
+        console.log('Navigating to events page');
+        navigate('/events');
+      }, 1500);
 
       return true;
     } catch (error: any) {

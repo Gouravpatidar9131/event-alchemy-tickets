@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -297,7 +296,7 @@ const CreateEventPage = () => {
       // Combine date and time for the event date
       const eventDateTime = combineDateTime(data.date, data.time);
       
-      // Prepare event data for creation
+      // Prepare event data for creation (event will be published by default)
       const eventData = {
         title: data.title,
         description: data.description,
@@ -305,7 +304,7 @@ const CreateEventPage = () => {
         location: data.location,
         price: mainPrice,
         total_tickets: totalTickets,
-        image_url: previewImage || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f', // Default image if none provided
+        image_url: previewImage || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f',
       };
 
       // Submit the event to the database
@@ -317,12 +316,11 @@ const CreateEventPage = () => {
         
         // Show success message
         toast({
-          title: "Event Created!",
-          description: "Your event has been created successfully.",
+          title: "Event Created and Published!",
+          description: "Your event has been created and is now live.",
         });
         
-        // Redirect to dashboard
-        navigate('/dashboard');
+        // Navigation will be handled by useEventCreation hook
       }
     } catch (error: any) {
       console.error('Error creating event:', error);

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -95,8 +94,7 @@ export const useEvents = () => {
         .insert({
           ...eventData,
           creator_id: user.id,
-          tickets_sold: 0,
-          is_published: false
+          tickets_sold: 0
         })
         .select()
         .single();
