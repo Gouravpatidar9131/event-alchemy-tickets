@@ -46,7 +46,7 @@ const PurchaseTicketModal = ({
 
   const ticketType = event?.ticketTypes?.[selectedTicketType] || {
     name: 'General Admission',
-    price: event?.price || 0.5
+    price: event?.price || 0
   };
   
   const basePrice = ticketType ? parseFloat(ticketType.price) * ticketQuantity : 0;
@@ -75,7 +75,7 @@ const PurchaseTicketModal = ({
     setIsProcessing(true);
 
     try {
-      // Create a small placeholder image buffer as fallback
+      // Create a small placeholder image buffer
       const fallbackBuffer = new ArrayBuffer(100);
       const view = new Uint8Array(fallbackBuffer);
       for (let i = 0; i < 100; i++) {
@@ -100,22 +100,31 @@ const PurchaseTicketModal = ({
         }
       }
 
-      // Determine price based on payment method
+      // Determine price and currency based on payment method
       let finalPrice = 0;
-      let currency = 'FREE';
+      let currency: 'ETH' | 'USD' | 'FREE' = 'FREE';
       
       if (paymentMethod === 'stripe') {
-        finalPrice = basePrice; // USD price for Stripe
+        finalPrice = basePrice * 10; // Convert to USD (multiply by 10 for demo)
         currency = 'USD';
       } else if (paymentMethod === 'ethereum') {
-        finalPrice = totalPriceInEth; // ETH price including network fee
+        finalPrice = totalPriceInEth;
         currency = 'ETH';
+      } else {
+        finalPrice = 0;
+        currency = 'FREE';
       }
+
+      console.log('Purchase details:', {
+        paymentMethod,
+        finalPrice,
+        currency,
+        ticketType: ticketType.name
+      });
       
       await purchaseTicketMutation.mutateAsync({
         eventId: event.id,
         eventDetails: {
-          ...event,
           title: event.title || 'Event',
           date: event.date || new Date().toISOString(),
           location: event.location || 'Virtual',
@@ -124,7 +133,7 @@ const PurchaseTicketModal = ({
         },
         ticketType: ticketType.name || 'General Admission',
         price: finalPrice,
-        currency: currency as 'ETH',
+        currency: currency,
         imageBuffer,
         paymentMethod
       });
@@ -225,7 +234,7 @@ const PurchaseTicketModal = ({
                       <Coins className="h-4 w-4 mr-2 text-blue-600" />
                       <span>Ethereum</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">{totalPriceInEth} ETH</span>
+                    <span className="text-sm text-muted-foreground">{totalPriceInEth.toFixed(4)} ETH</span>
                   </div>
                 </Label>
               </div>

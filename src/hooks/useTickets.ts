@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,7 +33,7 @@ export interface PurchaseTicketParams {
   price: number;
   currency: 'ETH' | 'USD' | 'FREE';
   imageBuffer: ArrayBuffer;
-  paymentMethod?: 'free' | 'stripe' | 'ethereum';
+  paymentMethod: 'free' | 'stripe' | 'ethereum';
 }
 
 export const useTickets = () => {
@@ -92,33 +91,86 @@ export const useTickets = () => {
     return data as Ticket[];
   }, []);
 
+  const ensureUserProfile = async () => {
+    if (!user) return false;
+    
+    console.log('Checking user profile exists...');
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+
+    if (error && error.code === 'PGRST116') {
+      // Profile doesn't exist, create it
+      console.log('Creating user profile...');
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          display_name: user.email?.split('@')[0] || 'Anonymous User'
+        });
+      
+      if (insertError) {
+        console.error('Error creating profile:', insertError);
+        throw new Error('Failed to create user profile');
+      }
+      return true;
+    } else if (error) {
+      console.error('Error checking profile:', error);
+      throw new Error('Failed to verify user profile');
+    }
+    
+    return true;
+  };
+
   const purchaseTicket = async (params: PurchaseTicketParams) => {
     if (!user) throw new Error('You must be logged in to purchase tickets');
     
     try {
       console.log("Purchasing ticket with params:", params);
       
+      // Ensure user profile exists
+      await ensureUserProfile();
+      
+      // Validate payment method and price
+      if (params.paymentMethod === 'free' && params.price > 0) {
+        throw new Error('Free tickets cannot have a price');
+      }
+      
+      if (params.paymentMethod === 'stripe' && params.price <= 0) {
+        throw new Error('Stripe payments require a valid price');
+      }
+      
+      if (params.paymentMethod === 'ethereum' && params.price <= 0) {
+        throw new Error('Ethereum payments require a valid price');
+      }
+
       // Create ticket record in database
+      const ticketData = {
+        event_id: params.eventId,
+        owner_id: user.id,
+        purchase_price: params.price,
+        metadata: {
+          ticketType: params.ticketType,
+          eventDetails: params.eventDetails,
+          currency: params.currency,
+          paymentMethod: params.paymentMethod
+        },
+        status: 'active' as const
+      };
+
+      console.log('Inserting ticket with data:', ticketData);
+
       const { data: ticket, error } = await supabase
         .from('tickets')
-        .insert({
-          event_id: params.eventId,
-          owner_id: user.id,
-          purchase_price: params.price,
-          metadata: {
-            ticketType: params.ticketType,
-            eventDetails: params.eventDetails,
-            currency: params.currency,
-            paymentMethod: params.paymentMethod || 'ethereum'
-          },
-          status: 'active'
-        })
+        .insert(ticketData)
         .select()
         .single();
 
       if (error) {
         console.error("Database error:", error);
-        throw new Error(error.message);
+        throw new Error(`Failed to create ticket: ${error.message}`);
       }
 
       // Update event tickets_sold count
@@ -194,9 +246,10 @@ export const useTickets = () => {
       });
     },
     onError: (error: any) => {
+      console.error('Purchase ticket mutation error:', error);
       toast({
         title: 'Error purchasing ticket',
-        description: error.message,
+        description: error.message || 'An unexpected error occurred',
         variant: 'destructive',
       });
     },
