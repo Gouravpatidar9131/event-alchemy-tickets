@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useAccount } from 'wagmi';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTickets } from '@/hooks/useTickets';
 import { Button } from '@/components/ui/button';
@@ -35,7 +34,7 @@ const PurchaseTicketModal = ({
   ticketQuantity,
 }: PurchaseTicketModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const { connected: solanaConnected, publicKey: solanaPublicKey } = useWallet();
+  const { address, isConnected } = useAccount();
   const { user } = useAuth();
   const { purchaseTicketMutation } = useTickets();
   const navigate = useNavigate();
@@ -46,10 +45,7 @@ const PurchaseTicketModal = ({
   };
   
   const basePrice = ticketType ? parseFloat(ticketType.price) * ticketQuantity : 0;
-  const totalPriceInSol = basePrice + NETWORK_FEE;
-
-  const isWalletConnected = solanaConnected;
-  const walletPublicKey = solanaPublicKey;
+  const totalPriceInEth = basePrice + NETWORK_FEE;
 
   const handlePurchase = async () => {
     if (!user) {
@@ -59,8 +55,8 @@ const PurchaseTicketModal = ({
       return;
     }
 
-    if (!isWalletConnected || !walletPublicKey) {
-      toast(`Please connect your Solana wallet to purchase tickets`);
+    if (!isConnected || !address) {
+      toast('Please connect your Ethereum wallet to purchase tickets');
       onClose();
       return;
     }
@@ -111,8 +107,8 @@ const PurchaseTicketModal = ({
           tickets_sold: event.tickets_sold || 0,
         },
         ticketType: ticketType.name || 'General Admission',
-        price: totalPriceInSol,
-        currency: 'SOL',
+        price: totalPriceInEth,
+        currency: 'ETH',
         imageBuffer
       });
       
@@ -154,26 +150,26 @@ const PurchaseTicketModal = ({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Price per Ticket:</span>
-              <span>{ticketType?.price} SOL</span>
+              <span>{ticketType?.price} ETH</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Network Fee:</span>
-              <span>{NETWORK_FEE} SOL</span>
+              <span>{NETWORK_FEE} ETH</span>
             </div>
             
             <div className="border-t border-border pt-3 flex justify-between font-bold">
               <span>Total:</span>
-              <span>{totalPriceInSol} SOL</span>
+              <span>{totalPriceInEth} ETH</span>
             </div>
           </div>
           
           <div className="mt-4 text-sm text-muted-foreground">
-            <p>This will mint an NFT ticket to your connected wallet. The NFT will serve as your proof of purchase and entry to the event.</p>
+            <p>This will mint an NFT ticket to your connected Ethereum wallet. The NFT will serve as your proof of purchase and entry to the event.</p>
           </div>
           
-          {!isWalletConnected && (
+          {!isConnected && (
             <div className="mt-2 p-2 bg-yellow-50 text-yellow-700 rounded border border-yellow-200 text-sm">
-              Please connect your Solana wallet before proceeding with the purchase.
+              Please connect your Ethereum wallet before proceeding with the purchase.
             </div>
           )}
         </div>
@@ -188,8 +184,8 @@ const PurchaseTicketModal = ({
           </Button>
           <Button
             onClick={handlePurchase}
-            className="bg-solana-gradient hover:opacity-90"
-            disabled={isProcessing || !isWalletConnected}
+            className="bg-blue-600 hover:bg-blue-700"
+            disabled={isProcessing || !isConnected}
           >
             {isProcessing ? (
               <>
@@ -199,7 +195,7 @@ const PurchaseTicketModal = ({
             ) : (
               <>
                 <Coins className="h-4 w-4 mr-2" />
-                Pay with SOL
+                Pay with ETH
               </>
             )}
           </Button>

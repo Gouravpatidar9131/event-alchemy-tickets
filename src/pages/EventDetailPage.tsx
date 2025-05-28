@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useAccount } from 'wagmi';
 import { useEvents } from '@/hooks/useEvents';
 import { useAuth } from '@/providers/AuthProvider';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,7 +17,7 @@ const EventDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { useEventQuery } = useEvents();
   const { user } = useAuth();
-  const { connected } = useWallet();
+  const { address, isConnected } = useAccount();
   const { useEventTicketsQuery } = useTickets();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -266,12 +266,12 @@ const EventDetailPage = () => {
                       <div key={index} className="flex justify-between items-center p-4 border rounded-lg">
                         <div>
                           <h3 className="font-medium">{type.name}</h3>
-                          <p className="text-sm text-muted-foreground">{type.price} SOL</p>
+                          <p className="text-sm text-muted-foreground">{type.price} ETH</p>
                         </div>
                         <Button 
                           onClick={() => handlePurchase(index)}
-                          disabled={!connected}
-                          className="bg-solana-gradient hover:opacity-90"
+                          disabled={!isConnected}
+                          className="bg-blue-600 hover:bg-blue-700"
                         >
                           <Ticket className="h-4 w-4 mr-2" />
                           Buy
@@ -280,9 +280,9 @@ const EventDetailPage = () => {
                     ))}
                   </div>
                   
-                  {!connected && (
+                  {!isConnected && (
                     <p className="text-sm text-muted-foreground mt-4">
-                      Please connect your wallet to purchase tickets
+                      Please connect your Ethereum wallet to purchase tickets
                     </p>
                   )}
                 </>

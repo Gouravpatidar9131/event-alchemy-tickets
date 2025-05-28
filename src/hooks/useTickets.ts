@@ -31,7 +31,7 @@ export interface PurchaseTicketParams {
   };
   ticketType: string;
   price: number;
-  currency: 'SOL';
+  currency: 'ETH';
   imageBuffer: ArrayBuffer;
 }
 
@@ -105,7 +105,8 @@ export const useTickets = () => {
           purchase_price: params.price,
           metadata: {
             ticketType: params.ticketType,
-            eventDetails: params.eventDetails
+            eventDetails: params.eventDetails,
+            currency: params.currency
           },
           status: 'active'
         })
@@ -186,7 +187,7 @@ export const useTickets = () => {
       queryClient.invalidateQueries({ queryKey: ['eventTickets'] });
       toast({
         title: 'Ticket purchased',
-        description: 'Your ticket has been purchased successfully',
+        description: 'Your ticket has been purchased successfully with ETH',
       });
     },
     onError: (error: any) => {

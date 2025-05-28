@@ -1,11 +1,12 @@
 
-import { useWallet } from '@solana/wallet-adapter-react';
+import { useAccount, useDisconnect } from 'wagmi';
 import { useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useWalletConnection = () => {
-  const { connected, publicKey, disconnect } = useWallet();
+  const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const { toast } = useToast();
 
   const updateUserProfile = useCallback(async () => {
@@ -15,8 +16,8 @@ export const useWalletConnection = () => {
 
       const updates: Record<string, any> = {};
       
-      if (connected && publicKey) {
-        updates.wallet_address = publicKey.toString();
+      if (isConnected && address) {
+        updates.wallet_address = address;
       }
       
       if (Object.keys(updates).length === 0) return;
@@ -30,7 +31,7 @@ export const useWalletConnection = () => {
 
       toast({
         title: 'Wallet Connected',
-        description: 'Your wallet has been linked to your account',
+        description: 'Your Ethereum wallet has been linked to your account',
       });
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -40,11 +41,11 @@ export const useWalletConnection = () => {
         variant: 'destructive',
       });
     }
-  }, [publicKey, connected, toast]);
+  }, [address, isConnected, toast]);
 
   const handleDisconnect = useCallback(async () => {
     try {
-      await disconnect();
+      disconnect();
       
       const { error } = await supabase
         .from('profiles')
@@ -68,8 +69,8 @@ export const useWalletConnection = () => {
   }, [disconnect, toast]);
 
   return {
-    connected,
-    publicKey,
+    connected: isConnected,
+    address,
     updateUserProfile,
     handleDisconnect,
   };
