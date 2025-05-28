@@ -1,4 +1,3 @@
-
 import { Calendar, Clock, MapPin, Image } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -57,10 +56,15 @@ const EventCard = ({
     setImageLoaded(false);
   };
 
-  // Check if imageUrl is valid (not empty, not a blob URL, and is a proper URL)
+  // Check if imageUrl is valid (supports both Supabase storage URLs and external URLs)
   const isValidImageUrl = (url: string) => {
     if (!url || url.trim() === '') return false;
     if (url.startsWith('blob:')) return false;
+    
+    // Check for Supabase storage URLs
+    if (url.includes('supabase') && url.includes('/storage/v1/object/public/')) return true;
+    
+    // Check for valid external URLs
     try {
       new URL(url);
       return true;
@@ -69,8 +73,7 @@ const EventCard = ({
     }
   };
 
-  const shouldShowFallback = !isValidImageUrl(imageUrl) || imageError || !imageLoaded;
-  const displayImageUrl = isValidImageUrl(imageUrl) ? imageUrl : getFallbackImage();
+  const shouldShowFallback = !isValidImageUrl(imageUrl) || imageError;
 
   return (
     <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:translate-y-[-5px] hover:shadow-lg group">

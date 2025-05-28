@@ -83,6 +83,8 @@ const CreateEventPage = () => {
   const [maxResalePrice, setMaxResalePrice] = useState('');
   const [previewImage, setPreviewImage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const { createEvent, isCreating } = useEventCreation();
   
   // Set up form with react-hook-form and zod validation
@@ -131,14 +133,90 @@ const CreateEventPage = () => {
     setTicketTypes(updatedTicketTypes);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadImageToSupabase = async (file: File): Promise<string> => {
+    try {
+      setIsUploading(true);
+      
+      // Create a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+      
+      // Upload file to Supabase storage
+      const { data, error } = await supabase.storage
+        .from('event-photos')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Upload error:', error);
+        throw new Error(error.message);
+      }
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('event-photos')
+        .getPublicUrl(data.path);
+
+      console.log('Image uploaded successfully:', publicUrl);
+      return publicUrl;
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload image",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // In a real app, this would upload to IPFS/Arweave
-      // Here we just create a local URL for preview
-      const imageUrl = URL.createObjectURL(file);
-      setPreviewImage(imageUrl);
-      form.setValue('coverImage', imageUrl); // Using the preview URL for now
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Create local preview URL
+      const localPreviewUrl = URL.createObjectURL(file);
+      setPreviewImage(localPreviewUrl);
+      
+      // Upload to Supabase
+      const uploadedUrl = await uploadImageToSupabase(file);
+      setUploadedImageUrl(uploadedUrl);
+      form.setValue('coverImage', uploadedUrl);
+      
+      toast({
+        title: "Image Uploaded",
+        description: "Your event image has been uploaded successfully",
+      });
+    } catch (error) {
+      // Reset preview on error
+      setPreviewImage('');
+      setUploadedImageUrl('');
+      form.setValue('coverImage', '');
     }
   };
 
@@ -304,7 +382,7 @@ const CreateEventPage = () => {
         location: data.location,
         price: mainPrice,
         total_tickets: totalTickets,
-        image_url: previewImage || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f',
+        image_url: uploadedImageUrl || 'https://images.unsplash.com/photo-1591522811280-a8759970b03f',
       };
 
       // Submit the event to the database
@@ -313,6 +391,11 @@ const CreateEventPage = () => {
       if (success) {
         // Clear the draft from local storage
         localStorage.removeItem('eventDraft');
+        
+        // Clean up local preview URL
+        if (previewImage.startsWith('blob:')) {
+          URL.revokeObjectURL(previewImage);
+        }
         
         // Show success message
         toast({
@@ -509,7 +592,7 @@ const CreateEventPage = () => {
                             <FormLabel>Cover Image</FormLabel>
                             <FormControl>
                               <div className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-6 cursor-pointer hover:bg-card transition-all"
-                                onClick={() => document.getElementById('image-upload')?.click()}
+                                onClick={() => !isUploading && document.getElementById('image-upload')?.click()}
                               >
                                 <input
                                   id="image-upload"
@@ -517,6 +600,7 @@ const CreateEventPage = () => {
                                   className="hidden"
                                   accept="image/*"
                                   onChange={handleImageUpload}
+                                  disabled={isUploading}
                                 />
                                 
                                 {previewImage ? (
@@ -531,20 +615,30 @@ const CreateEventPage = () => {
                                       size="sm"
                                       variant="outline"
                                       className="absolute top-2 right-2 glass-button"
+                                      disabled={isUploading}
                                       onClick={(e) => {
                                         e.stopPropagation();
+                                        if (previewImage.startsWith('blob:')) {
+                                          URL.revokeObjectURL(previewImage);
+                                        }
                                         setPreviewImage('');
+                                        setUploadedImageUrl('');
                                         form.setValue('coverImage', '');
                                       }}
                                     >
                                       Change Image
                                     </Button>
+                                    {isUploading && (
+                                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+                                        <div className="text-white text-sm">Uploading...</div>
+                                      </div>
+                                    )}
                                   </div>
                                 ) : (
                                   <>
                                     <Upload className="h-10 w-10 text-muted-foreground mb-2" />
                                     <p className="text-muted-foreground text-sm">
-                                      Click to upload or drag and drop
+                                      {isUploading ? 'Uploading...' : 'Click to upload or drag and drop'}
                                     </p>
                                     <p className="text-xs text-muted-foreground mt-1">
                                       SVG, PNG, JPG or GIF (max. 5MB)
@@ -554,7 +648,7 @@ const CreateEventPage = () => {
                               </div>
                             </FormControl>
                             <FormDescription>
-                              This image will be uploaded to IPFS/Arweave for decentralized storage.
+                              This image will be stored securely in Supabase storage.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>

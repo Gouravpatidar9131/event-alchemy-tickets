@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -91,6 +90,23 @@ const EventDetailPage = () => {
     return `${placeholders[index]}?w=800&h=450&fit=crop&auto=format`;
   };
 
+  // Check if imageUrl is valid (supports both Supabase storage URLs and external URLs)
+  const isValidImageUrl = (url: string) => {
+    if (!url || url.trim() === '') return false;
+    if (url.startsWith('blob:')) return false;
+    
+    // Check for Supabase storage URLs
+    if (url.includes('supabase') && url.includes('/storage/v1/object/public/')) return true;
+    
+    // Check for valid external URLs
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto py-8 px-4">
@@ -120,7 +136,8 @@ const EventDetailPage = () => {
           <h1 className="text-3xl font-bold mb-4">{event.title}</h1>
           
           <div className="rounded-lg overflow-hidden mb-6 aspect-video bg-muted relative">
-            {!imageError && event.image_url ? (
+            {/* Main image - only show if valid and not errored */}
+            {isValidImageUrl(event.image_url) && !imageError && (
               <img 
                 src={event.image_url} 
                 alt={event.title} 
@@ -128,10 +145,10 @@ const EventDetailPage = () => {
                 onLoad={handleImageLoad}
                 onError={handleImageError}
               />
-            ) : null}
+            )}
             
-            {/* Show placeholder while loading or if error/no image */}
-            {(!imageLoaded || imageError || !event.image_url) && (
+            {/* Show placeholder while loading or if error/no valid image */}
+            {(!imageLoaded || imageError || !isValidImageUrl(event.image_url)) && (
               <div className="absolute inset-0 w-full h-full">
                 <img 
                   src={getPlaceholderImage()} 
@@ -142,13 +159,12 @@ const EventDetailPage = () => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
+                {/* Final fallback if all images fail */}
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600">
+                  <Image className="h-16 w-16 text-white opacity-50" />
+                </div>
               </div>
             )}
-            
-            {/* Final fallback if all images fail */}
-            <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600 ${(imageLoaded && !imageError) ? 'hidden' : ''}`}>
-              <Image className="h-16 w-16 text-white opacity-50" />
-            </div>
           </div>
           
           <div className="flex flex-wrap gap-4 mb-6">
