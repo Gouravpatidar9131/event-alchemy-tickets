@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,8 +32,9 @@ export interface PurchaseTicketParams {
   };
   ticketType: string;
   price: number;
-  currency: 'ETH';
+  currency: 'ETH' | 'USD' | 'FREE';
   imageBuffer: ArrayBuffer;
+  paymentMethod?: 'free' | 'stripe' | 'ethereum';
 }
 
 export const useTickets = () => {
@@ -106,7 +108,8 @@ export const useTickets = () => {
           metadata: {
             ticketType: params.ticketType,
             eventDetails: params.eventDetails,
-            currency: params.currency
+            currency: params.currency,
+            paymentMethod: params.paymentMethod || 'ethereum'
           },
           status: 'active'
         })
@@ -187,7 +190,7 @@ export const useTickets = () => {
       queryClient.invalidateQueries({ queryKey: ['eventTickets'] });
       toast({
         title: 'Ticket purchased',
-        description: 'Your ticket has been purchased successfully with ETH',
+        description: 'Your ticket has been purchased successfully',
       });
     },
     onError: (error: any) => {
