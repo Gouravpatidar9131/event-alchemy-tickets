@@ -42,7 +42,6 @@ export const CDPWalletProvider: React.FC<CDPWalletProviderProps> = ({ children }
     const walletSDK = new WalletSDK({
       appName: 'Event Ticketing DApp',
       appLogoUrl: 'https://family.co/logo.png',
-      darkMode: false,
     });
 
     const newWallet = walletSDK.makeWeb3Provider({
