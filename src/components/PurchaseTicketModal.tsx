@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { useCDPWallet } from '@/providers/CDPWalletProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTickets } from '@/hooks/useTickets';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,11 @@ import {
 } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Ticket, Loader2, Coins, CreditCard, Gift } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Ticket, Loader2, Coins, CreditCard, Gift, Bot, Zap } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
+import { agentKitPricing } from '@/services/AgentKitPricing';
 
 const NETWORK_FEE = 0.001;
 
@@ -39,7 +41,9 @@ const PurchaseTicketModal = ({
 }: PurchaseTicketModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('free');
-  const { address, isConnected } = useAccount();
+  const [aiPrice, setAiPrice] = useState<number | null>(null);
+  const [isLoadingAiPrice, setIsLoadingAiPrice] = useState(false);
+  const { accounts, isConnected, chainId } = useCDPWallet();
   const { user } = useAuth();
   const { purchaseTicketMutation } = useTickets();
   const navigate = useNavigate();
@@ -48,9 +52,44 @@ const PurchaseTicketModal = ({
     name: 'General Admission',
     price: event?.price || 0
   };
+
+  useEffect(() => {
+    if (isOpen && event?.id) {
+      fetchAiPricing();
+    }
+  }, [isOpen, event?.id]);
+
+  const fetchAiPricing = async () => {
+    setIsLoadingAiPrice(true);
+    try {
+      const recommendation = await agentKitPricing.calculateDynamicPricing(event.id);
+      setAiPrice(recommendation.suggestedPrice);
+      console.log('AgentKit: AI pricing fetched for modal', recommendation);
+    } catch (error) {
+      console.error('AgentKit: Failed to fetch AI pricing', error);
+    } finally {
+      setIsLoadingAiPrice(false);
+    }
+  };
+
+  const getEffectivePrice = () => {
+    return aiPrice || parseFloat(ticketType.price) || 0;
+  };
   
-  const basePrice = ticketType ? parseFloat(ticketType.price) * ticketQuantity : 0;
+  const basePrice = getEffectivePrice() * ticketQuantity;
   const totalPriceInEth = basePrice + NETWORK_FEE;
+
+  const getChainName = () => {
+    const chainNames: Record<number, string> = {
+      1: 'Ethereum',
+      137: 'Polygon',
+      42161: 'Arbitrum',
+      10: 'Optimism',
+      8453: 'Base',
+      43114: 'Avalanche',
+    };
+    return chainId ? chainNames[chainId] || `Chain ${chainId}` : 'Unknown';
+  };
 
   const handlePurchase = async () => {
     if (!user) {
@@ -60,8 +99,8 @@ const PurchaseTicketModal = ({
       return;
     }
 
-    if (paymentMethod === 'ethereum' && (!isConnected || !address)) {
-      toast('Please connect your Ethereum wallet to purchase with ETH');
+    if (paymentMethod === 'ethereum' && (!isConnected || !accounts.length)) {
+      toast('Please connect your CDP wallet to purchase with crypto');
       return;
     }
 
@@ -119,7 +158,9 @@ const PurchaseTicketModal = ({
         paymentMethod,
         finalPrice,
         currency,
-        ticketType: ticketType.name
+        ticketType: ticketType.name,
+        chainId,
+        wallet: accounts[0]
       });
       
       await purchaseTicketMutation.mutateAsync({
@@ -139,7 +180,8 @@ const PurchaseTicketModal = ({
       });
       
       const paymentMethodText = paymentMethod === 'free' ? 'for free' : 
-                               paymentMethod === 'stripe' ? 'with Stripe' : 'with ETH';
+                               paymentMethod === 'stripe' ? 'with Stripe' : 
+                               `with ${currency} on ${getChainName()}`;
       
       toast(`Ticket purchased successfully ${paymentMethodText}!`, {
         description: 'Your ticket has been added to your collection.'
@@ -160,7 +202,7 @@ const PurchaseTicketModal = ({
   const getPaymentButtonText = () => {
     if (paymentMethod === 'free') return 'Get Free Ticket';
     if (paymentMethod === 'stripe') return 'Pay with Stripe';
-    return 'Pay with ETH';
+    return `Pay with ${getChainName()}`;
   };
 
   const getPaymentIcon = () => {
@@ -195,7 +237,37 @@ const PurchaseTicketModal = ({
               <span className="text-muted-foreground">Quantity:</span>
               <span>{ticketQuantity}</span>
             </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Price per ticket:</span>
+              <div className="flex items-center gap-2">
+                {isLoadingAiPrice ? (
+                  <div className="flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span className="text-xs">AI analyzing...</span>
+                  </div>
+                ) : aiPrice ? (
+                  <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                    <Bot className="w-3 h-3 mr-1" />
+                    AI: {aiPrice} ETH
+                  </Badge>
+                ) : (
+                  <span>{ticketType?.price || 0} ETH</span>
+                )}
+              </div>
+            </div>
           </div>
+
+          {aiPrice && aiPrice !== parseFloat(ticketType?.price || '0') && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-purple-700 text-sm font-medium">
+                <Zap className="w-4 h-4" />
+                AgentKit AI Pricing Active
+              </div>
+              <p className="text-purple-600 text-xs mt-1">
+                Price optimized based on real-time demand analysis
+              </p>
+            </div>
+          )}
 
           <div className="space-y-3">
             <Label className="text-sm font-medium">Select Payment Method:</Label>
@@ -232,7 +304,7 @@ const PurchaseTicketModal = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <Coins className="h-4 w-4 mr-2 text-blue-600" />
-                      <span>Ethereum</span>
+                      <span>CDP Wallet ({getChainName()})</span>
                     </div>
                     <span className="text-sm text-muted-foreground">{totalPriceInEth.toFixed(4)} ETH</span>
                   </div>
@@ -243,10 +315,10 @@ const PurchaseTicketModal = ({
 
           {paymentMethod === 'ethereum' && (
             <div className="text-sm text-muted-foreground">
-              <p>This will mint an NFT ticket to your connected Ethereum wallet. The NFT will serve as your proof of purchase and entry to the event.</p>
+              <p>This will process payment through your connected CDP wallet on {getChainName()}. Multi-chain support available.</p>
               {!isConnected && (
                 <div className="mt-2 p-2 bg-yellow-50 text-yellow-700 rounded border border-yellow-200 text-sm">
-                  Please connect your Ethereum wallet before proceeding with ETH payment.
+                  Please connect your CDP wallet before proceeding with crypto payment.
                 </div>
               )}
             </div>
