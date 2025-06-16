@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAccount } from 'wagmi';
+import { useCDPWallet } from '@/providers/CDPWalletProvider';
 import { useEvents } from '@/hooks/useEvents';
 import { useAuth } from '@/providers/AuthProvider';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,12 +12,23 @@ import PurchaseTicketModal from '@/components/PurchaseTicketModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTickets } from '@/hooks/useTickets';
 import CheckInScanner from '@/components/CheckInScanner';
+import { Badge } from '@/components/ui/badge';
+
+// Chain-specific token configurations
+const CHAIN_TOKENS: Record<number, { name: string; symbol: string; priceMultiplier: number }> = {
+  1: { name: 'Ethereum', symbol: 'ETH', priceMultiplier: 1 }, // Ethereum mainnet
+  137: { name: 'Polygon', symbol: 'MATIC', priceMultiplier: 0.5 }, // Polygon is cheaper
+  42161: { name: 'Arbitrum', symbol: 'ETH', priceMultiplier: 0.8 }, // Arbitrum L2
+  10: { name: 'Optimism', symbol: 'ETH', priceMultiplier: 0.8 }, // Optimism L2
+  8453: { name: 'Base', symbol: 'ETH', priceMultiplier: 0.7 }, // Base L2
+  43114: { name: 'Avalanche', symbol: 'AVAX', priceMultiplier: 0.3 }, // Avalanche
+};
 
 const EventDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const { useEventQuery } = useEvents();
   const { user } = useAuth();
-  const { address, isConnected } = useAccount();
+  const { accounts, isConnected, chainId } = useCDPWallet();
   const { useEventTicketsQuery } = useTickets();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,12 +43,35 @@ const EventDetailPage = () => {
   const isCreator = user && event && user.id === event.creator_id;
   const availableTickets = event ? event.total_tickets - event.tickets_sold : 0;
   const eventDate = event ? new Date(event.date) : new Date();
+
+  // Get current chain token info
+  const getCurrentChainToken = () => {
+    return chainId ? CHAIN_TOKENS[chainId] || { name: 'Unknown', symbol: 'ETH', priceMultiplier: 1 } : { name: 'Ethereum', symbol: 'ETH', priceMultiplier: 1 };
+  };
+
+  const chainToken = getCurrentChainToken();
   
-  // Define ticket types based on event price
+  // Define ticket types based on event price with chain-specific pricing
+  const getChainAdjustedPrice = (basePrice: number) => {
+    return basePrice * chainToken.priceMultiplier;
+  };
+
   const ticketTypes = [
-    { name: 'General Admission', price: event?.price?.toString() || '0' },
-    { name: 'VIP', price: (event?.price ? event.price * 2 : 0).toString() },
-    { name: 'Premium', price: (event?.price ? event.price * 3 : 0).toString() }
+    { 
+      name: 'General Admission', 
+      price: getChainAdjustedPrice(event?.price || 0).toFixed(4),
+      symbol: chainToken.symbol
+    },
+    { 
+      name: 'VIP', 
+      price: getChainAdjustedPrice((event?.price || 0) * 2).toFixed(4),
+      symbol: chainToken.symbol
+    },
+    { 
+      name: 'Premium', 
+      price: getChainAdjustedPrice((event?.price || 0) * 3).toFixed(4),
+      symbol: chainToken.symbol
+    }
   ];
   
   // Add ticket types to event object
@@ -253,7 +287,22 @@ const EventDetailPage = () => {
         <div>
           <Card>
             <CardContent className="pt-6">
-              <h2 className="text-xl font-semibold mb-4">Get Tickets</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Get Tickets</h2>
+                {isConnected && chainId && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                    {chainToken.name}
+                  </Badge>
+                )}
+              </div>
+              
+              {!isConnected && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-700">
+                    Connect your CDP wallet to see prices in your preferred token
+                  </p>
+                </div>
+              )}
               
               {availableTickets > 0 ? (
                 <>
@@ -266,7 +315,16 @@ const EventDetailPage = () => {
                       <div key={index} className="flex justify-between items-center p-4 border rounded-lg">
                         <div>
                           <h3 className="font-medium">{type.name}</h3>
-                          <p className="text-sm text-muted-foreground">{type.price} ETH</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-muted-foreground">
+                              {type.price} {type.symbol}
+                            </p>
+                            {isConnected && chainToken.priceMultiplier !== 1 && (
+                              <Badge variant="secondary" className="text-xs">
+                                {Math.round((1 - chainToken.priceMultiplier) * 100)}% off
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <Button 
                           onClick={() => handlePurchase(index)}
@@ -282,7 +340,7 @@ const EventDetailPage = () => {
                   
                   {!isConnected && (
                     <p className="text-sm text-muted-foreground mt-4">
-                      Please connect your Ethereum wallet to purchase tickets
+                      Please connect your CDP wallet to purchase tickets
                     </p>
                   )}
                 </>

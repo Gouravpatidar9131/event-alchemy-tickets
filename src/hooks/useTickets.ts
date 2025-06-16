@@ -31,7 +31,7 @@ export interface PurchaseTicketParams {
   };
   ticketType: string;
   price: number;
-  currency: 'ETH' | 'USD' | 'FREE';
+  currency: 'ETH' | 'USD' | 'FREE' | 'MATIC' | 'AVAX';
   imageBuffer: ArrayBuffer;
   paymentMethod: 'free' | 'stripe' | 'ethereum';
 }

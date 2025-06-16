@@ -22,6 +22,16 @@ import { agentKitPricing } from '@/services/AgentKitPricing';
 
 const NETWORK_FEE = 0.001;
 
+// Chain-specific token configurations
+const CHAIN_TOKENS: Record<number, { name: string; symbol: string; priceMultiplier: number }> = {
+  1: { name: 'Ethereum', symbol: 'ETH', priceMultiplier: 1 }, // Ethereum mainnet
+  137: { name: 'Polygon', symbol: 'MATIC', priceMultiplier: 0.5 }, // Polygon is cheaper
+  42161: { name: 'Arbitrum', symbol: 'ETH', priceMultiplier: 0.8 }, // Arbitrum L2
+  10: { name: 'Optimism', symbol: 'ETH', priceMultiplier: 0.8 }, // Optimism L2
+  8453: { name: 'Base', symbol: 'ETH', priceMultiplier: 0.7 }, // Base L2
+  43114: { name: 'Avalanche', symbol: 'AVAX', priceMultiplier: 0.3 }, // Avalanche
+};
+
 interface PurchaseTicketModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -53,6 +63,13 @@ const PurchaseTicketModal = ({
     price: event?.price || 0
   };
 
+  // Get current chain token info
+  const getCurrentChainToken = () => {
+    return chainId ? CHAIN_TOKENS[chainId] || { name: 'Unknown', symbol: 'ETH', priceMultiplier: 1 } : { name: 'Ethereum', symbol: 'ETH', priceMultiplier: 1 };
+  };
+
+  const chainToken = getCurrentChainToken();
+
   useEffect(() => {
     if (isOpen && event?.id) {
       fetchAiPricing();
@@ -73,11 +90,13 @@ const PurchaseTicketModal = ({
   };
 
   const getEffectivePrice = () => {
-    return aiPrice || parseFloat(ticketType.price) || 0;
+    const basePrice = aiPrice || parseFloat(ticketType.price) || 0;
+    // Apply chain-specific price multiplier
+    return basePrice * chainToken.priceMultiplier;
   };
   
   const basePrice = getEffectivePrice() * ticketQuantity;
-  const totalPriceInEth = basePrice + NETWORK_FEE;
+  const totalPriceInToken = basePrice + (NETWORK_FEE * chainToken.priceMultiplier);
 
   const getChainName = () => {
     const chainNames: Record<number, string> = {
@@ -141,14 +160,14 @@ const PurchaseTicketModal = ({
 
       // Determine price and currency based on payment method
       let finalPrice = 0;
-      let currency: 'ETH' | 'USD' | 'FREE' = 'FREE';
+      let currency: 'ETH' | 'USD' | 'FREE' | 'MATIC' | 'AVAX' = 'FREE';
       
       if (paymentMethod === 'stripe') {
         finalPrice = basePrice * 10; // Convert to USD (multiply by 10 for demo)
         currency = 'USD';
       } else if (paymentMethod === 'ethereum') {
-        finalPrice = totalPriceInEth;
-        currency = 'ETH';
+        finalPrice = totalPriceInToken;
+        currency = chainToken.symbol as 'ETH' | 'MATIC' | 'AVAX';
       } else {
         finalPrice = 0;
         currency = 'FREE';
@@ -160,6 +179,7 @@ const PurchaseTicketModal = ({
         currency,
         ticketType: ticketType.name,
         chainId,
+        chainToken,
         wallet: accounts[0]
       });
       
@@ -202,7 +222,7 @@ const PurchaseTicketModal = ({
   const getPaymentButtonText = () => {
     if (paymentMethod === 'free') return 'Get Free Ticket';
     if (paymentMethod === 'stripe') return 'Pay with Stripe';
-    return `Pay with ${getChainName()}`;
+    return `Pay with ${chainToken.symbol} on ${getChainName()}`;
   };
 
   const getPaymentIcon = () => {
@@ -248,13 +268,21 @@ const PurchaseTicketModal = ({
                 ) : aiPrice ? (
                   <Badge variant="secondary" className="bg-purple-100 text-purple-700">
                     <Bot className="w-3 h-3 mr-1" />
-                    AI: {aiPrice} ETH
+                    AI: {getEffectivePrice().toFixed(4)} {chainToken.symbol}
                   </Badge>
                 ) : (
-                  <span>{ticketType?.price || 0} ETH</span>
+                  <span>{getEffectivePrice().toFixed(4)} {chainToken.symbol}</span>
                 )}
               </div>
             </div>
+            {isConnected && chainId && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Network:</span>
+                <Badge variant="outline">
+                  {chainToken.name} ({chainToken.symbol})
+                </Badge>
+              </div>
+            )}
           </div>
 
           {aiPrice && aiPrice !== parseFloat(ticketType?.price || '0') && (
@@ -264,7 +292,7 @@ const PurchaseTicketModal = ({
                 AgentKit AI Pricing Active
               </div>
               <p className="text-purple-600 text-xs mt-1">
-                Price optimized based on real-time demand analysis
+                Price optimized based on real-time demand analysis and chain economics
               </p>
             </div>
           )}
@@ -304,9 +332,9 @@ const PurchaseTicketModal = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <Coins className="h-4 w-4 mr-2 text-blue-600" />
-                      <span>CDP Wallet ({getChainName()})</span>
+                      <span>CDP Wallet ({chainToken.name})</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">{totalPriceInEth.toFixed(4)} ETH</span>
+                    <span className="text-sm text-muted-foreground">{totalPriceInToken.toFixed(4)} {chainToken.symbol}</span>
                   </div>
                 </Label>
               </div>
@@ -315,7 +343,7 @@ const PurchaseTicketModal = ({
 
           {paymentMethod === 'ethereum' && (
             <div className="text-sm text-muted-foreground">
-              <p>This will process payment through your connected CDP wallet on {getChainName()}. Multi-chain support available.</p>
+              <p>This will process payment through your connected CDP wallet on {getChainName()} using {chainToken.symbol}. Multi-chain support available.</p>
               {!isConnected && (
                 <div className="mt-2 p-2 bg-yellow-50 text-yellow-700 rounded border border-yellow-200 text-sm">
                   Please connect your CDP wallet before proceeding with crypto payment.
