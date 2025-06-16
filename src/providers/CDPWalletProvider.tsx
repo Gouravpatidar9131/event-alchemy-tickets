@@ -1,6 +1,5 @@
-
 import React, { ReactNode, createContext, useContext, useState, useEffect } from 'react';
-import { WalletSDK } from '@coinbase/wallet-sdk';
+import WalletSDK from '@coinbase/wallet-sdk';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 interface CDPWalletContextType {
