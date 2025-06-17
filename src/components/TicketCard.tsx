@@ -45,11 +45,15 @@ const TicketCard = ({ ticket, showDetails }: TicketCardProps) => {
     setShowQR(!showQR);
   };
   
+  // Create unique QR data for each ticket
   const qrData = JSON.stringify({
     ticketId: ticket.id,
     eventId: ticket.event_id,
+    ownerId: ticket.owner_id,
     status: ticket.status,
-    mintAddress: ticket.mint_address || 'none'
+    purchaseDate: ticket.purchase_date,
+    mintAddress: ticket.mint_address || 'none',
+    metadata: ticket.metadata
   });
 
   return (
@@ -91,6 +95,9 @@ const TicketCard = ({ ticket, showDetails }: TicketCardProps) => {
             <p className="text-sm text-center text-muted-foreground">
               Present this QR code at the event entrance
             </p>
+            <p className="text-xs text-center text-muted-foreground">
+              Ticket ID: {ticket.id.substring(0, 8)}...
+            </p>
             <Button variant="outline" size="sm" onClick={toggleQR}>
               Hide QR Code
             </Button>
@@ -111,6 +118,12 @@ const TicketCard = ({ ticket, showDetails }: TicketCardProps) => {
               <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
               <span className="text-sm truncate">{event?.location || 'Unknown location'}</span>
             </div>
+            {ticket.metadata?.ticketType && (
+              <div className="flex items-center">
+                <QrCode className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="text-sm">{ticket.metadata.ticketType}</span>
+              </div>
+            )}
           </div>
         )}
         

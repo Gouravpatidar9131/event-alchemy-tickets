@@ -8,58 +8,9 @@ import { Calendar, QrCode, Ticket, Clock, Award, ArrowUpRight } from 'lucide-rea
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
-
-// Mock data for owned tickets
-const ownedTickets = [
-  {
-    id: '101',
-    eventId: '1',
-    eventTitle: 'Solana Summer Hackathon',
-    eventDate: 'June 10, 2025',
-    eventLocation: 'Virtual Event',
-    ticketType: 'General Admission',
-    price: '0.5 SOL',
-    purchaseDate: 'May 15, 2024',
-    status: 'upcoming',
-    imageUrl: 'https://images.unsplash.com/photo-1591522811280-a8759970b03f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-  },
-  {
-    id: '102',
-    eventId: '3',
-    eventTitle: 'NFT Art Exhibition',
-    eventDate: 'August 15, 2025',
-    eventLocation: 'Miami, FL',
-    ticketType: 'VIP Access',
-    price: '1.2 SOL',
-    purchaseDate: 'May 12, 2024',
-    status: 'upcoming',
-    imageUrl: 'https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1744&q=80',
-  },
-  {
-    id: '103',
-    eventId: '5',
-    eventTitle: 'Blockchain Gaming Conference',
-    eventDate: 'October 5, 2024',
-    eventLocation: 'Tokyo, Japan',
-    ticketType: 'Standard Entry',
-    price: '0.8 SOL',
-    purchaseDate: 'March 20, 2024',
-    status: 'checked-in',
-    imageUrl: 'https://images.unsplash.com/photo-1511882150382-421056c89033?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1742&q=80',
-  },
-  {
-    id: '104',
-    eventId: '8',
-    eventTitle: 'Solana New Year Gala 2024',
-    eventDate: 'December 31, 2024',
-    eventLocation: 'New York, NY',
-    ticketType: 'VIP Pass',
-    price: '2.0 SOL',
-    purchaseDate: 'November 15, 2023',
-    status: 'past',
-    imageUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80',
-  }
-];
+import { useTickets } from '@/hooks/useTickets';
+import TicketCard from '@/components/TicketCard';
+import { useRealtimeTickets } from '@/hooks/useRealtimeTickets';
 
 // Mock user stats data
 const userStats = {
@@ -79,14 +30,14 @@ const userStats = {
 };
 
 const DashboardPage = () => {
-  const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
+  const { useUserTicketsQuery } = useTickets();
+  const { data: userTickets, isLoading, error } = useUserTicketsQuery();
+  
+  // Enable real-time updates for user tickets
+  useRealtimeTickets();
 
-  const toggleTicketExpand = (ticketId: string) => {
-    if (selectedTicket === ticketId) {
-      setSelectedTicket(null);
-    } else {
-      setSelectedTicket(ticketId);
-    }
+  const showTicketDetails = (ticketId: string) => {
+    console.log('Show details for ticket:', ticketId);
   };
 
   return (
@@ -110,150 +61,37 @@ const DashboardPage = () => {
             
             <TabsContent value="tickets">
               <div className="grid grid-cols-1 gap-6">
-                {ownedTickets.map((ticket) => (
-                  <div 
-                    key={ticket.id}
-                    className={`glass-card rounded-xl overflow-hidden transition-all duration-300 ${
-                      selectedTicket === ticket.id ? 'ticket-shadow' : ''
-                    }`}
-                  >
-                    <div 
-                      className="p-6 cursor-pointer"
-                      onClick={() => toggleTicketExpand(ticket.id)}
-                    >
-                      <div className="flex flex-col md:flex-row md:items-center gap-4">
-                        <div className="w-full md:w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
-                          <img 
-                            src={ticket.imageUrl} 
-                            alt={ticket.eventTitle} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        
-                        <div className="flex-grow">
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
-                            <h3 className="text-xl font-bold">{ticket.eventTitle}</h3>
-                            <Badge 
-                              variant={
-                                ticket.status === 'upcoming' ? 'default' : 
-                                ticket.status === 'checked-in' ? 'outline' : 'secondary'
-                              }
-                              className={
-                                ticket.status === 'upcoming' ? 'bg-solana-blue text-black' : 
-                                ticket.status === 'checked-in' ? 'border-solana-green text-solana-green' : ''
-                              }
-                            >
-                              {ticket.status === 'upcoming' ? 'Upcoming' : 
-                               ticket.status === 'checked-in' ? 'Checked In' : 'Past Event'}
-                            </Badge>
-                          </div>
-                          
-                          <div className="flex flex-col md:flex-row md:items-center text-sm text-muted-foreground gap-y-1 md:gap-x-4">
-                            <div className="flex items-center">
-                              <Calendar className="h-4 w-4 mr-1" />
-                              {ticket.eventDate}
-                            </div>
-                            <div className="flex items-center">
-                              <Ticket className="h-4 w-4 mr-1" />
-                              {ticket.ticketType}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex md:flex-col items-center justify-between md:justify-start md:items-end gap-2 mt-2 md:mt-0">
-                          {ticket.status === 'upcoming' && (
-                            <Button 
-                              size="sm" 
-                              className="w-full md:w-auto"
-                            >
-                              <QrCode className="h-4 w-4 mr-2" />
-                              Show QR
-                            </Button>
-                          )}
-                          <Link to={`/events/${ticket.eventId}`}>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="w-full md:w-auto glass-button"
-                            >
-                              Event Details
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {selectedTicket === ticket.id && (
-                      <div className="p-6 pt-0 border-t border-border mt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <h4 className="font-bold mb-4">Ticket Details</h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Ticket ID:</span>
-                                <span>{ticket.id}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Purchase Date:</span>
-                                <span>{ticket.purchaseDate}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Price Paid:</span>
-                                <span>{ticket.price}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Location:</span>
-                                <span>{ticket.eventLocation}</span>
-                              </div>
-                            </div>
-                            
-                            <div className="mt-6 space-x-2">
-                              <Button variant="outline" size="sm" className="glass-button">
-                                Transfer Ticket
-                              </Button>
-                              <Button variant="outline" size="sm" className="glass-button">
-                                List for Sale
-                              </Button>
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-col items-center justify-center text-center bg-card rounded-lg p-6">
-                            <div className="mb-4">
-                              {ticket.status === 'upcoming' ? (
-                                <>
-                                  <Clock className="h-10 w-10 mx-auto mb-2 text-solana-purple" />
-                                  <h4 className="font-bold">Event Starts In</h4>
-                                  <p className="text-2xl font-bold mt-2">15 Days</p>
-                                </>
-                              ) : ticket.status === 'checked-in' ? (
-                                <>
-                                  <Badge className="bg-solana-green text-black px-4 py-2 text-lg">Checked In</Badge>
-                                  <p className="mt-4 text-muted-foreground">
-                                    Your NFT ticket has evolved to its event attendance state.
-                                  </p>
-                                </>
-                              ) : (
-                                <>
-                                  <Award className="h-10 w-10 mx-auto mb-2 text-solana-blue" />
-                                  <h4 className="font-bold">Collectible NFT</h4>
-                                  <p className="mt-2 text-muted-foreground">
-                                    This ticket is now a permanent collectible in your wallet.
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                            
-                            <div className="w-full mt-4">
-                              <Button className="w-full">
-                                View NFT in Wallet
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                {isLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                    <p className="mt-2 text-muted-foreground">Loading your tickets...</p>
                   </div>
-                ))}
+                ) : error ? (
+                  <div className="text-center py-8">
+                    <p className="text-red-600">Error loading tickets: {error.message}</p>
+                  </div>
+                ) : !userTickets || userTickets.length === 0 ? (
+                  <div className="text-center py-12 glass-card rounded-xl">
+                    <Ticket className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No Tickets Yet</h3>
+                    <p className="text-muted-foreground mb-6">
+                      You haven't purchased any tickets yet. Browse events to get started!
+                    </p>
+                    <Link to="/events">
+                      <Button className="bg-solana-gradient hover:opacity-90 text-white">
+                        Browse Events
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  userTickets.map((ticket) => (
+                    <TicketCard
+                      key={ticket.id}
+                      ticket={ticket}
+                      showDetails={() => showTicketDetails(ticket.id)}
+                    />
+                  ))
+                )}
               </div>
             </TabsContent>
             
@@ -419,7 +257,7 @@ const DashboardPage = () => {
   );
 };
 
-// Add this missing icon import
+// Add missing icon components
 const Lock = ({ className }: { className?: string }) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
