@@ -32,7 +32,7 @@ const DashboardPage = () => {
   const { data: userTickets, isLoading, error } = useUserTicketsQuery();
   
   // Enable real-time updates for user tickets
-  useRealtimeTickets();
+  
 
   const showTicketDetails = (ticketId: string) => {
     console.log('Show details for ticket:', ticketId);
