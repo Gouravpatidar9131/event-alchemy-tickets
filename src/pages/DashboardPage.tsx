@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -10,7 +9,6 @@ import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { useTickets } from '@/hooks/useTickets';
 import TicketCard from '@/components/TicketCard';
-import { useRealtimeTickets } from '@/hooks/useRealtimeTickets';
 
 // Mock user stats data
 const userStats = {

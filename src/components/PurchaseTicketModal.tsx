@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useCDPWallet } from '@/providers/CDPWalletProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTickets } from '@/hooks/useTickets';
-import { useRealtimeTickets } from '@/hooks/useRealtimeTickets';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,7 +15,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Ticket, Loader2, Coins, CreditCard, Gift, Bot, Zap, AlertTriangle } from 'lucide-react';
+import { Ticket, Loader2, Coins, Gift, Bot, Zap, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
 import { agentKitPricing } from '@/services/AgentKitPricing';
@@ -42,7 +41,7 @@ interface PurchaseTicketModalProps {
   ticketQuantity: number;
 }
 
-type PaymentMethod = 'free' | 'stripe' | 'ethereum';
+type PaymentMethod = 'free' | 'ethereum';
 
 const PurchaseTicketModal = ({
   isOpen,
@@ -59,9 +58,6 @@ const PurchaseTicketModal = ({
   const { user } = useAuth();
   const { purchaseTicketMutation } = useTickets();
   const navigate = useNavigate();
-  
-  // Enable real-time updates for this event
-  useRealtimeTickets(event?.id);
 
   const ticketType = event?.ticketTypes?.[selectedTicketType] || {
     name: 'General Admission',
@@ -177,12 +173,9 @@ const PurchaseTicketModal = ({
 
       // Determine price and currency based on payment method
       let finalPrice = 0;
-      let currency: 'ETH' | 'USD' | 'FREE' | 'MATIC' | 'AVAX' = 'FREE';
+      let currency: 'ETH' | 'FREE' | 'MATIC' | 'AVAX' = 'FREE';
       
-      if (paymentMethod === 'stripe') {
-        finalPrice = basePrice * 10; // Convert to USD (multiply by 10 for demo)
-        currency = 'USD';
-      } else if (paymentMethod === 'ethereum') {
+      if (paymentMethod === 'ethereum') {
         finalPrice = totalPriceInToken;
         currency = chainToken.symbol as 'ETH' | 'MATIC' | 'AVAX';
       } else {
@@ -217,7 +210,6 @@ const PurchaseTicketModal = ({
       });
       
       const paymentMethodText = paymentMethod === 'free' ? 'for free' : 
-                               paymentMethod === 'stripe' ? 'with Stripe' : 
                                `with ${currency} on ${getChainName()}`;
       
       toast(`Ticket purchased successfully ${paymentMethodText}!`, {
@@ -240,21 +232,18 @@ const PurchaseTicketModal = ({
     if (isEventSoldOut) return 'Sold Out';
     if (isQuantityExceedsAvailable) return `Only ${availableTickets} Available`;
     if (paymentMethod === 'free') return 'Get Free Ticket';
-    if (paymentMethod === 'stripe') return 'Pay with Stripe';
     return `Pay with ${chainToken.symbol} on ${getChainName()}`;
   };
 
   const getPaymentIcon = () => {
     if (isEventSoldOut || isQuantityExceedsAvailable) return <AlertTriangle className="h-4 w-4 mr-2" />;
     if (paymentMethod === 'free') return <Gift className="h-4 w-4 mr-2" />;
-    if (paymentMethod === 'stripe') return <CreditCard className="h-4 w-4 mr-2" />;
     return <Coins className="h-4 w-4 mr-2" />;
   };
 
   const getPaymentButtonColor = () => {
     if (isEventSoldOut || isQuantityExceedsAvailable) return 'bg-gray-500 hover:bg-gray-600';
     if (paymentMethod === 'free') return 'bg-green-600 hover:bg-green-700';
-    if (paymentMethod === 'stripe') return 'bg-purple-600 hover:bg-purple-700';
     return 'bg-blue-600 hover:bg-blue-700';
   };
 
@@ -360,19 +349,6 @@ const PurchaseTicketModal = ({
                 </div>
                 
                 <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
-                  <RadioGroupItem value="stripe" id="stripe" />
-                  <Label htmlFor="stripe" className="flex-1 cursor-pointer">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <CreditCard className="h-4 w-4 mr-2 text-purple-600" />
-                        <span>Stripe (Credit Card)</span>
-                      </div>
-                      <span className="text-sm text-muted-foreground">${(basePrice * 10).toFixed(2)}</span>
-                    </div>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
                   <RadioGroupItem value="ethereum" id="ethereum" />
                   <Label htmlFor="ethereum" className="flex-1 cursor-pointer">
                     <div className="flex items-center justify-between">
@@ -396,12 +372,6 @@ const PurchaseTicketModal = ({
                   Please connect your CDP wallet before proceeding with crypto payment.
                 </div>
               )}
-            </div>
-          )}
-
-          {paymentMethod === 'stripe' && !isEventSoldOut && (
-            <div className="text-sm text-muted-foreground">
-              <p>You will be redirected to Stripe's secure checkout to complete your payment.</p>
             </div>
           )}
 

@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,9 +32,9 @@ export interface PurchaseTicketParams {
   };
   ticketType: string;
   price: number;
-  currency: 'ETH' | 'USD' | 'FREE' | 'MATIC' | 'AVAX';
+  currency: 'ETH' | 'FREE' | 'MATIC' | 'AVAX';
   imageBuffer: ArrayBuffer;
-  paymentMethod: 'free' | 'stripe' | 'ethereum';
+  paymentMethod: 'free' | 'ethereum';
 }
 
 export const useTickets = () => {
@@ -136,10 +137,6 @@ export const useTickets = () => {
       // Validate payment method and price
       if (params.paymentMethod === 'free' && params.price > 0) {
         throw new Error('Free tickets cannot have a price');
-      }
-      
-      if (params.paymentMethod === 'stripe' && params.price <= 0) {
-        throw new Error('Stripe payments require a valid price');
       }
       
       if (params.paymentMethod === 'ethereum' && params.price <= 0) {
