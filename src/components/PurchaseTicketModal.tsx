@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useCDPWallet } from '@/providers/CDPWalletProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTickets } from '@/hooks/useTickets';
+import { useRealtimeTickets } from '@/hooks/useRealtimeTickets';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,10 +16,11 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Ticket, Loader2, Coins, CreditCard, Gift, Bot, Zap } from 'lucide-react';
+import { Ticket, Loader2, Coins, CreditCard, Gift, Bot, Zap, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
 import { agentKitPricing } from '@/services/AgentKitPricing';
+import RealtimeTicketCounter from './RealtimeTicketCounter';
 
 const NETWORK_FEE = 0.001;
 
@@ -57,11 +59,19 @@ const PurchaseTicketModal = ({
   const { user } = useAuth();
   const { purchaseTicketMutation } = useTickets();
   const navigate = useNavigate();
+  
+  // Enable real-time updates for this event
+  useRealtimeTickets(event?.id);
 
   const ticketType = event?.ticketTypes?.[selectedTicketType] || {
     name: 'General Admission',
     price: event?.price || 0
   };
+
+  // Check if tickets are still available
+  const availableTickets = event ? event.total_tickets - event.tickets_sold : 0;
+  const isEventSoldOut = availableTickets <= 0;
+  const isQuantityExceedsAvailable = ticketQuantity > availableTickets;
 
   // Get current chain token info
   const getCurrentChainToken = () => {
@@ -115,6 +125,13 @@ const PurchaseTicketModal = ({
       toast('Please sign in to purchase tickets');
       navigate('/auth');
       onClose();
+      return;
+    }
+
+    if (isEventSoldOut || isQuantityExceedsAvailable) {
+      toast('Not enough tickets available', {
+        description: `Only ${availableTickets} tickets remaining`,
+      });
       return;
     }
 
@@ -220,22 +237,28 @@ const PurchaseTicketModal = ({
   };
 
   const getPaymentButtonText = () => {
+    if (isEventSoldOut) return 'Sold Out';
+    if (isQuantityExceedsAvailable) return `Only ${availableTickets} Available`;
     if (paymentMethod === 'free') return 'Get Free Ticket';
     if (paymentMethod === 'stripe') return 'Pay with Stripe';
     return `Pay with ${chainToken.symbol} on ${getChainName()}`;
   };
 
   const getPaymentIcon = () => {
+    if (isEventSoldOut || isQuantityExceedsAvailable) return <AlertTriangle className="h-4 w-4 mr-2" />;
     if (paymentMethod === 'free') return <Gift className="h-4 w-4 mr-2" />;
     if (paymentMethod === 'stripe') return <CreditCard className="h-4 w-4 mr-2" />;
     return <Coins className="h-4 w-4 mr-2" />;
   };
 
   const getPaymentButtonColor = () => {
+    if (isEventSoldOut || isQuantityExceedsAvailable) return 'bg-gray-500 hover:bg-gray-600';
     if (paymentMethod === 'free') return 'bg-green-600 hover:bg-green-700';
     if (paymentMethod === 'stripe') return 'bg-purple-600 hover:bg-purple-700';
     return 'bg-blue-600 hover:bg-blue-700';
   };
+
+  const isPurchaseDisabled = isProcessing || isEventSoldOut || isQuantityExceedsAvailable || (paymentMethod === 'ethereum' && !isConnected);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -248,6 +271,28 @@ const PurchaseTicketModal = ({
         </DialogHeader>
         
         <div className="py-4 space-y-4">
+          {/* Real-time ticket counter */}
+          <div className="bg-card border border-border rounded-lg p-4">
+            <RealtimeTicketCounter 
+              totalTickets={event?.total_tickets || 0}
+              ticketsSold={event?.tickets_sold || 0}
+              className="justify-center"
+            />
+          </div>
+
+          {/* Show warning if not enough tickets */}
+          {isQuantityExceedsAvailable && !isEventSoldOut && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 text-yellow-700 text-sm font-medium">
+                <AlertTriangle className="w-4 h-4" />
+                Limited Availability
+              </div>
+              <p className="text-yellow-600 text-xs mt-1">
+                Only {availableTickets} tickets remaining. Please adjust your quantity.
+              </p>
+            </div>
+          )}
+
           <div className="bg-card border border-border rounded-lg p-4 space-y-3">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Ticket Type:</span>
@@ -297,51 +342,53 @@ const PurchaseTicketModal = ({
             </div>
           )}
 
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Select Payment Method:</Label>
-            <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
-                <RadioGroupItem value="free" id="free" />
-                <Label htmlFor="free" className="flex-1 cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Gift className="h-4 w-4 mr-2 text-green-600" />
-                      <span>Free</span>
+          {!isEventSoldOut && !isQuantityExceedsAvailable && (
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Select Payment Method:</Label>
+              <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>
+                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
+                  <RadioGroupItem value="free" id="free" />
+                  <Label htmlFor="free" className="flex-1 cursor-pointer">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Gift className="h-4 w-4 mr-2 text-green-600" />
+                        <span>Free</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">$0.00</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">$0.00</span>
-                  </div>
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
-                <RadioGroupItem value="stripe" id="stripe" />
-                <Label htmlFor="stripe" className="flex-1 cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <CreditCard className="h-4 w-4 mr-2 text-purple-600" />
-                      <span>Stripe (Credit Card)</span>
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
+                  <RadioGroupItem value="stripe" id="stripe" />
+                  <Label htmlFor="stripe" className="flex-1 cursor-pointer">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <CreditCard className="h-4 w-4 mr-2 text-purple-600" />
+                        <span>Stripe (Credit Card)</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">${(basePrice * 10).toFixed(2)}</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">${(basePrice * 10).toFixed(2)}</span>
-                  </div>
-                </Label>
-              </div>
-              
-              <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
-                <RadioGroupItem value="ethereum" id="ethereum" />
-                <Label htmlFor="ethereum" className="flex-1 cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Coins className="h-4 w-4 mr-2 text-blue-600" />
-                      <span>CDP Wallet ({chainToken.name})</span>
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
+                  <RadioGroupItem value="ethereum" id="ethereum" />
+                  <Label htmlFor="ethereum" className="flex-1 cursor-pointer">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Coins className="h-4 w-4 mr-2 text-blue-600" />
+                        <span>CDP Wallet ({chainToken.name})</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">{totalPriceInToken.toFixed(4)} {chainToken.symbol}</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">{totalPriceInToken.toFixed(4)} {chainToken.symbol}</span>
-                  </div>
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
 
-          {paymentMethod === 'ethereum' && (
+          {paymentMethod === 'ethereum' && !isEventSoldOut && (
             <div className="text-sm text-muted-foreground">
               <p>This will process payment through your connected CDP wallet on {getChainName()} using {chainToken.symbol}. Multi-chain support available.</p>
               {!isConnected && (
@@ -352,13 +399,13 @@ const PurchaseTicketModal = ({
             </div>
           )}
 
-          {paymentMethod === 'stripe' && (
+          {paymentMethod === 'stripe' && !isEventSoldOut && (
             <div className="text-sm text-muted-foreground">
               <p>You will be redirected to Stripe's secure checkout to complete your payment.</p>
             </div>
           )}
 
-          {paymentMethod === 'free' && (
+          {paymentMethod === 'free' && !isEventSoldOut && (
             <div className="text-sm text-muted-foreground">
               <p>This ticket is completely free! You'll receive it instantly in your dashboard.</p>
             </div>
@@ -376,7 +423,7 @@ const PurchaseTicketModal = ({
           <Button
             onClick={handlePurchase}
             className={getPaymentButtonColor()}
-            disabled={isProcessing || (paymentMethod === 'ethereum' && !isConnected)}
+            disabled={isPurchaseDisabled}
           >
             {isProcessing ? (
               <>

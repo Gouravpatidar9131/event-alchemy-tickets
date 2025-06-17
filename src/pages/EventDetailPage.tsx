@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useCDPWallet } from '@/providers/CDPWalletProvider';
 import { useEvents } from '@/hooks/useEvents';
 import { useAuth } from '@/providers/AuthProvider';
+import { useRealtimeTickets } from '@/hooks/useRealtimeTickets';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, MapPin, Ticket, Users, Image } from 'lucide-react';
@@ -13,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTickets } from '@/hooks/useTickets';
 import CheckInScanner from '@/components/CheckInScanner';
 import { Badge } from '@/components/ui/badge';
+import RealtimeTicketCounter from '@/components/RealtimeTicketCounter';
 
 // Chain-specific token configurations
 const CHAIN_TOKENS: Record<number, { name: string; symbol: string; priceMultiplier: number }> = {
@@ -30,6 +32,9 @@ const EventDetailPage = () => {
   const { user } = useAuth();
   const { accounts, isConnected, chainId } = useCDPWallet();
   const { useEventTicketsQuery } = useTickets();
+  
+  // Enable real-time updates for this specific event
+  useRealtimeTickets(id);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTicketType, setSelectedTicketType] = useState(0);
@@ -108,7 +113,6 @@ const EventDetailPage = () => {
     setImageLoaded(false);
   };
   
-  // Get a placeholder image if no image or error loading
   const getPlaceholderImage = () => {
     const placeholders = [
       "https://images.unsplash.com/photo-1649972904349-6e44c42644a7",
@@ -118,21 +122,17 @@ const EventDetailPage = () => {
       "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d"
     ];
     
-    // Use event ID as a seed to always get the same placeholder for the same event
     const seed = id ? parseInt(id.substring(0, 8), 16) : 0;
     const index = seed % placeholders.length;
     return `${placeholders[index]}?w=800&h=450&fit=crop&auto=format`;
   };
 
-  // Check if imageUrl is valid (supports both Supabase storage URLs and external URLs)
   const isValidImageUrl = (url: string) => {
     if (!url || url.trim() === '') return false;
     if (url.startsWith('blob:')) return false;
     
-    // Check for Supabase storage URLs
     if (url.includes('supabase') && url.includes('/storage/v1/object/public/')) return true;
     
-    // Check for valid external URLs
     try {
       new URL(url);
       return true;
@@ -189,11 +189,9 @@ const EventDetailPage = () => {
                   alt={`${event.title} placeholder`} 
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // Fallback to a colored background if even the placeholder fails
                     e.currentTarget.style.display = 'none';
                   }}
                 />
-                {/* Final fallback if all images fail */}
                 <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600">
                   <Image className="h-16 w-16 text-white opacity-50" />
                 </div>
@@ -210,10 +208,11 @@ const EventDetailPage = () => {
               <MapPin className="mr-2 h-4 w-4" />
               {event.location}
             </div>
-            <div className="flex items-center text-muted-foreground">
-              <Users className="mr-2 h-4 w-4" />
-              {event.tickets_sold} / {event.total_tickets} tickets sold
-            </div>
+            <RealtimeTicketCounter 
+              totalTickets={event.total_tickets}
+              ticketsSold={event.tickets_sold}
+              className="text-muted-foreground"
+            />
           </div>
           
           <Tabs defaultValue="details" className="mb-8">
@@ -233,9 +232,11 @@ const EventDetailPage = () => {
                     <h3 className="text-xl font-semibold mb-4">Attendees</h3>
                     {eventTickets && eventTickets.length > 0 ? (
                       <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {eventTickets.length} ticket(s) sold
-                        </p>
+                        <RealtimeTicketCounter 
+                          totalTickets={event.total_tickets}
+                          ticketsSold={event.tickets_sold}
+                          className="justify-start mb-4"
+                        />
                         <div className="border rounded-md">
                           <table className="min-w-full divide-y divide-border">
                             <thead>
@@ -304,12 +305,17 @@ const EventDetailPage = () => {
                 </div>
               )}
               
+              {/* Real-time ticket availability display */}
+              <div className="mb-4">
+                <RealtimeTicketCounter 
+                  totalTickets={event.total_tickets}
+                  ticketsSold={event.tickets_sold}
+                  className="justify-center"
+                />
+              </div>
+              
               {availableTickets > 0 ? (
                 <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {availableTickets} tickets available
-                  </p>
-                  
                   <div className="space-y-4">
                     {ticketTypes.map((type, index) => (
                       <div key={index} className="flex justify-between items-center p-4 border rounded-lg">
