@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,8 +15,12 @@ export interface Ticket {
   mint_address?: string;
   token_id?: string;
   status: 'active' | 'used' | 'cancelled';
-  profiles?: {
-    display_name?: string;
+  events?: {
+    id: string;
+    title: string;
+    date: string;
+    location: string;
+    image_url: string;
   };
 }
 
@@ -52,8 +55,18 @@ export const useTickets = () => {
     const { data, error } = await supabase
       .from('tickets')
       .select(`
-        *,
-        events (
+        id,
+        event_id,
+        owner_id,
+        purchase_price,
+        purchase_date,
+        checked_in_at,
+        metadata,
+        mint_address,
+        token_id,
+        status,
+        events!tickets_event_id_fkey (
+          id,
           title,
           date,
           location,
