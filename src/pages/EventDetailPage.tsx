@@ -250,7 +250,7 @@ const EventDetailPage = () => {
                               {eventTickets.map((ticket) => (
                                 <tr key={ticket.id}>
                                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                    {ticket.profiles?.display_name || 'Anonymous'}
+                                    Anonymous
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                                     {format(new Date(ticket.purchase_date), 'MMM d, yyyy')}
@@ -297,7 +297,15 @@ const EventDetailPage = () => {
                 )}
               </div>
               
-              {!isConnected && (
+              {!user && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-700">
+                    Please sign in to purchase tickets and connect your CDP wallet
+                  </p>
+                </div>
+              )}
+              
+              {user && !isConnected && (
                 <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-700">
                     Connect your CDP wallet to see prices in your preferred token
@@ -325,7 +333,7 @@ const EventDetailPage = () => {
                             <p className="text-sm text-muted-foreground">
                               {type.price} {type.symbol}
                             </p>
-                            {isConnected && chainToken.priceMultiplier !== 1 && (
+                            {user && isConnected && chainToken.priceMultiplier !== 1 && (
                               <Badge variant="secondary" className="text-xs">
                                 {Math.round((1 - chainToken.priceMultiplier) * 100)}% off
                               </Badge>
@@ -334,7 +342,7 @@ const EventDetailPage = () => {
                         </div>
                         <Button 
                           onClick={() => handlePurchase(index)}
-                          disabled={!isConnected}
+                          disabled={!user || !isConnected}
                           className="bg-blue-600 hover:bg-blue-700"
                         >
                           <Ticket className="h-4 w-4 mr-2" />
@@ -344,7 +352,13 @@ const EventDetailPage = () => {
                     ))}
                   </div>
                   
-                  {!isConnected && (
+                  {!user && (
+                    <p className="text-sm text-muted-foreground mt-4">
+                      Please sign in to purchase tickets
+                    </p>
+                  )}
+                  
+                  {user && !isConnected && (
                     <p className="text-sm text-muted-foreground mt-4">
                       Please connect your CDP wallet to purchase tickets
                     </p>

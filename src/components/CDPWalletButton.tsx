@@ -29,6 +29,15 @@ const CDPWalletButton = () => {
   const { toast } = useToast();
 
   const handleConnect = async () => {
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please sign in first to connect your CDP wallet',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       await connect();
       toast({
@@ -80,7 +89,7 @@ const CDPWalletButton = () => {
         </Button>
       )}
       
-      {isConnected ? (
+      {user && isConnected ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -127,7 +136,7 @@ const CDPWalletButton = () => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      ) : (
+      ) : user ? (
         <Button
           onClick={handleConnect}
           className={cn(
@@ -138,7 +147,7 @@ const CDPWalletButton = () => {
           <Wallet className="w-4 h-4" />
           Connect CDP Wallet
         </Button>
-      )}
+      ) : null}
     </div>
   );
 };
