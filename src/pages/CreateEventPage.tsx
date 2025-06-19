@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -137,9 +138,15 @@ const CreateEventPage = () => {
     try {
       setIsUploading(true);
       
+      if (!user) {
+        throw new Error('You must be signed in to upload images');
+      }
+      
       // Create a unique filename
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      console.log('Uploading file:', fileName);
       
       // Upload file to Supabase storage
       const { data, error } = await supabase.storage
@@ -154,6 +161,8 @@ const CreateEventPage = () => {
         throw new Error(error.message);
       }
 
+      console.log('Upload successful:', data);
+
       // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('event-photos')
@@ -165,7 +174,7 @@ const CreateEventPage = () => {
       console.error('Error uploading image:', error);
       toast({
         title: "Upload Failed",
-        description: error.message || "Failed to upload image",
+        description: error.message || "Failed to upload image. Please make sure you're signed in.",
         variant: "destructive",
       });
       throw error;
@@ -177,6 +186,15 @@ const CreateEventPage = () => {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to upload images",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -427,6 +445,14 @@ const CreateEventPage = () => {
             Create an event with NFT tickets on the Solana blockchain.
           </p>
           
+          {!user && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-700">
+                Please sign in to create events and upload images.
+              </p>
+            </div>
+          )}
+          
           <Tabs value={currentTab} onValueChange={navigateToTab}>
             <TabsList className="w-full mb-8 glass-card">
               <TabsTrigger value="details" className="flex-1">Event Details</TabsTrigger>
@@ -592,7 +618,7 @@ const CreateEventPage = () => {
                             <FormLabel>Cover Image</FormLabel>
                             <FormControl>
                               <div className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-6 cursor-pointer hover:bg-card transition-all"
-                                onClick={() => !isUploading && document.getElementById('image-upload')?.click()}
+                                onClick={() => !isUploading && user && document.getElementById('image-upload')?.click()}
                               >
                                 <input
                                   id="image-upload"
@@ -600,7 +626,7 @@ const CreateEventPage = () => {
                                   className="hidden"
                                   accept="image/*"
                                   onChange={handleImageUpload}
-                                  disabled={isUploading}
+                                  disabled={isUploading || !user}
                                 />
                                 
                                 {previewImage ? (
@@ -615,7 +641,7 @@ const CreateEventPage = () => {
                                       size="sm"
                                       variant="outline"
                                       className="absolute top-2 right-2 glass-button"
-                                      disabled={isUploading}
+                                      disabled={isUploading || !user}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         if (previewImage.startsWith('blob:')) {
@@ -638,7 +664,9 @@ const CreateEventPage = () => {
                                   <>
                                     <Upload className="h-10 w-10 text-muted-foreground mb-2" />
                                     <p className="text-muted-foreground text-sm">
-                                      {isUploading ? 'Uploading...' : 'Click to upload or drag and drop'}
+                                      {!user ? 'Sign in to upload images' : 
+                                       isUploading ? 'Uploading...' : 
+                                       'Click to upload or drag and drop'}
                                     </p>
                                     <p className="text-xs text-muted-foreground mt-1">
                                       SVG, PNG, JPG or GIF (max. 5MB)
@@ -648,7 +676,7 @@ const CreateEventPage = () => {
                               </div>
                             </FormControl>
                             <FormDescription>
-                              This image will be stored securely in Supabase storage.
+                              This image will be stored securely in Supabase storage. Please sign in to upload images.
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -656,13 +684,14 @@ const CreateEventPage = () => {
                       />
                     </CardContent>
                     <CardFooter className="flex justify-between">
-                      <Button variant="outline" type="button" onClick={saveEventDraft}>
+                      <Button variant="outline" type="button" onClick={saveEventDraft} disabled={!user}>
                         <Save className="mr-2 h-4 w-4" />
                         Save Draft
                       </Button>
                       <Button 
                         type="button" 
                         onClick={() => navigateToTab('tickets')}
+                        disabled={!user}
                       >
                         Continue to Tickets
                       </Button>
@@ -885,13 +914,14 @@ const CreateEventPage = () => {
                       <Button 
                         className="w-full bg-solana-gradient hover:opacity-90 text-white" 
                         type="submit"
-                        disabled={isSubmitting || isCreating}
+                        disabled={isSubmitting || isCreating || !user}
                       >
-                        {isSubmitting || isCreating ? 'Creating Event...' : 'Create Event'}
+                        {!user ? 'Sign In Required' :
+                         isSubmitting || isCreating ? 'Creating Event...' : 'Create Event'}
                       </Button>
                       <p className="text-xs text-muted-foreground text-center">
-                        By creating this event, you'll initiate a transaction on the Solana blockchain.
-                        This will create the event metadata and set up the NFT ticket system.
+                        {!user ? 'Please sign in to create events.' :
+                         'By creating this event, you\'ll initiate a transaction on the Solana blockchain. This will create the event metadata and set up the NFT ticket system.'}
                       </p>
                     </CardFooter>
                   </Card>
