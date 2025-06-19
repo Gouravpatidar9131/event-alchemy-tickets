@@ -64,6 +64,9 @@ const PurchaseTicketModal = ({
     price: event?.price || 0
   };
 
+  // Check if the event is free (price is 0)
+  const isEventFree = parseFloat(event?.price || '0') === 0;
+
   // Check if tickets are still available
   const availableTickets = event ? event.total_tickets - event.tickets_sold : 0;
   const isEventSoldOut = availableTickets <= 0;
@@ -78,11 +81,19 @@ const PurchaseTicketModal = ({
 
   useEffect(() => {
     if (isOpen && event?.id) {
-      fetchAiPricing();
+      // Set default payment method based on event price
+      if (isEventFree) {
+        setPaymentMethod('free');
+      } else {
+        setPaymentMethod('ethereum');
+        fetchAiPricing();
+      }
     }
-  }, [isOpen, event?.id]);
+  }, [isOpen, event?.id, isEventFree]);
 
   const fetchAiPricing = async () => {
+    if (isEventFree) return; // Don't fetch AI pricing for free events
+    
     setIsLoadingAiPrice(true);
     try {
       const recommendation = await agentKitPricing.calculateDynamicPricing(event.id);
@@ -96,6 +107,7 @@ const PurchaseTicketModal = ({
   };
 
   const getEffectivePrice = () => {
+    if (isEventFree) return 0;
     const basePrice = aiPrice || parseFloat(ticketType.price) || 0;
     // Apply chain-specific price multiplier
     return basePrice * chainToken.priceMultiplier;
@@ -171,16 +183,16 @@ const PurchaseTicketModal = ({
         }
       }
 
-      // Determine price and currency based on payment method
+      // Determine price and currency based on payment method and event price
       let finalPrice = 0;
       let currency: 'ETH' | 'FREE' | 'MATIC' | 'AVAX' = 'FREE';
       
-      if (paymentMethod === 'ethereum') {
-        finalPrice = totalPriceInToken;
-        currency = chainToken.symbol as 'ETH' | 'MATIC' | 'AVAX';
-      } else {
+      if (isEventFree || paymentMethod === 'free') {
         finalPrice = 0;
         currency = 'FREE';
+      } else if (paymentMethod === 'ethereum') {
+        finalPrice = totalPriceInToken;
+        currency = chainToken.symbol as 'ETH' | 'MATIC' | 'AVAX';
       }
 
       console.log('Purchase details:', {
@@ -190,7 +202,8 @@ const PurchaseTicketModal = ({
         ticketType: ticketType.name,
         chainId,
         chainToken,
-        wallet: accounts[0]
+        wallet: accounts[0],
+        isEventFree
       });
       
       await purchaseTicketMutation.mutateAsync({
@@ -206,10 +219,10 @@ const PurchaseTicketModal = ({
         price: finalPrice,
         currency: currency,
         imageBuffer,
-        paymentMethod
+        paymentMethod: isEventFree ? 'free' : paymentMethod
       });
       
-      const paymentMethodText = paymentMethod === 'free' ? 'for free' : 
+      const paymentMethodText = isEventFree || paymentMethod === 'free' ? 'for free' : 
                                `with ${currency} on ${getChainName()}`;
       
       toast(`Ticket purchased successfully ${paymentMethodText}!`, {
@@ -231,23 +244,24 @@ const PurchaseTicketModal = ({
   const getPaymentButtonText = () => {
     if (isEventSoldOut) return 'Sold Out';
     if (isQuantityExceedsAvailable) return `Only ${availableTickets} Available`;
+    if (isEventFree) return 'Get Free Ticket';
     if (paymentMethod === 'free') return 'Get Free Ticket';
     return `Pay with ${chainToken.symbol} on ${getChainName()}`;
   };
 
   const getPaymentIcon = () => {
     if (isEventSoldOut || isQuantityExceedsAvailable) return <AlertTriangle className="h-4 w-4 mr-2" />;
-    if (paymentMethod === 'free') return <Gift className="h-4 w-4 mr-2" />;
+    if (isEventFree || paymentMethod === 'free') return <Gift className="h-4 w-4 mr-2" />;
     return <Coins className="h-4 w-4 mr-2" />;
   };
 
   const getPaymentButtonColor = () => {
     if (isEventSoldOut || isQuantityExceedsAvailable) return 'bg-gray-500 hover:bg-gray-600';
-    if (paymentMethod === 'free') return 'bg-green-600 hover:bg-green-700';
+    if (isEventFree || paymentMethod === 'free') return 'bg-green-600 hover:bg-green-700';
     return 'bg-blue-600 hover:bg-blue-700';
   };
 
-  const isPurchaseDisabled = isProcessing || isEventSoldOut || isQuantityExceedsAvailable || (paymentMethod === 'ethereum' && !isConnected);
+  const isPurchaseDisabled = isProcessing || isEventSoldOut || isQuantityExceedsAvailable || (!isEventFree && paymentMethod === 'ethereum' && !isConnected);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -294,22 +308,31 @@ const PurchaseTicketModal = ({
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Price per ticket:</span>
               <div className="flex items-center gap-2">
-                {isLoadingAiPrice ? (
-                  <div className="flex items-center gap-1">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <span className="text-xs">AI analyzing...</span>
-                  </div>
-                ) : aiPrice ? (
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                    <Bot className="w-3 h-3 mr-1" />
-                    AI: {getEffectivePrice().toFixed(4)} {chainToken.symbol}
+                {isEventFree ? (
+                  <Badge variant="secondary" className="bg-green-100 text-green-700">
+                    <Gift className="w-3 h-3 mr-1" />
+                    FREE
                   </Badge>
                 ) : (
-                  <span>{getEffectivePrice().toFixed(4)} {chainToken.symbol}</span>
+                  <>
+                    {isLoadingAiPrice ? (
+                      <div className="flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span className="text-xs">AI analyzing...</span>
+                      </div>
+                    ) : aiPrice ? (
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                        <Bot className="w-3 h-3 mr-1" />
+                        AI: {getEffectivePrice().toFixed(4)} {chainToken.symbol}
+                      </Badge>
+                    ) : (
+                      <span>{getEffectivePrice().toFixed(4)} {chainToken.symbol}</span>
+                    )}
+                  </>
                 )}
               </div>
             </div>
-            {isConnected && chainId && (
+            {!isEventFree && isConnected && chainId && (
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Network:</span>
                 <Badge variant="outline">
@@ -319,7 +342,7 @@ const PurchaseTicketModal = ({
             )}
           </div>
 
-          {aiPrice && aiPrice !== parseFloat(ticketType?.price || '0') && (
+          {!isEventFree && aiPrice && aiPrice !== parseFloat(ticketType?.price || '0') && (
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
               <div className="flex items-center gap-2 text-purple-700 text-sm font-medium">
                 <Zap className="w-4 h-4" />
@@ -331,23 +354,11 @@ const PurchaseTicketModal = ({
             </div>
           )}
 
-          {!isEventSoldOut && !isQuantityExceedsAvailable && (
+          {/* Payment method selection - only show if event is not free and tickets are available */}
+          {!isEventFree && !isEventSoldOut && !isQuantityExceedsAvailable && (
             <div className="space-y-3">
               <Label className="text-sm font-medium">Select Payment Method:</Label>
               <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>
-                <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
-                  <RadioGroupItem value="free" id="free" />
-                  <Label htmlFor="free" className="flex-1 cursor-pointer">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Gift className="h-4 w-4 mr-2 text-green-600" />
-                        <span>Free</span>
-                      </div>
-                      <span className="text-sm text-muted-foreground">$0.00</span>
-                    </div>
-                  </Label>
-                </div>
-                
                 <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50">
                   <RadioGroupItem value="ethereum" id="ethereum" />
                   <Label htmlFor="ethereum" className="flex-1 cursor-pointer">
@@ -364,7 +375,15 @@ const PurchaseTicketModal = ({
             </div>
           )}
 
-          {paymentMethod === 'ethereum' && !isEventSoldOut && (
+          {/* Show free event message */}
+          {isEventFree && !isEventSoldOut && (
+            <div className="text-sm text-muted-foreground">
+              <p>This event is completely free! You'll receive your ticket instantly in your dashboard.</p>
+            </div>
+          )}
+
+          {/* Show payment method specific messages for paid events */}
+          {!isEventFree && paymentMethod === 'ethereum' && !isEventSoldOut && (
             <div className="text-sm text-muted-foreground">
               <p>This will process payment through your connected CDP wallet on {getChainName()} using {chainToken.symbol}. Multi-chain support available.</p>
               {!isConnected && (
@@ -372,12 +391,6 @@ const PurchaseTicketModal = ({
                   Please connect your CDP wallet before proceeding with crypto payment.
                 </div>
               )}
-            </div>
-          )}
-
-          {paymentMethod === 'free' && !isEventSoldOut && (
-            <div className="text-sm text-muted-foreground">
-              <p>This ticket is completely free! You'll receive it instantly in your dashboard.</p>
             </div>
           )}
         </div>
