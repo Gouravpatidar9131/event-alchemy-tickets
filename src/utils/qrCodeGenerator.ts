@@ -5,11 +5,12 @@ export interface QRCodeData {
   ticketId: string;
   eventId: string;
   attendeeId: string;
+  attendeeName?: string;
   timestamp: string;
   signature: string;
 }
 
-export const generateQRCodeData = (ticketId: string, eventId: string, attendeeId: string): QRCodeData => {
+export const generateQRCodeData = (ticketId: string, eventId: string, attendeeId: string, attendeeName?: string): QRCodeData => {
   const timestamp = new Date().toISOString();
   // Create a simple signature to prevent tampering
   const signature = btoa(`${ticketId}-${eventId}-${attendeeId}-${timestamp}`);
@@ -18,6 +19,7 @@ export const generateQRCodeData = (ticketId: string, eventId: string, attendeeId
     ticketId,
     eventId,
     attendeeId,
+    attendeeName,
     timestamp,
     signature
   };

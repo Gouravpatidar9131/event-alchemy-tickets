@@ -1,10 +1,13 @@
 
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Home, Search, Ticket, User } from 'lucide-react';
+import { CalendarDays, Home, Search, Ticket, User, LogOut } from 'lucide-react';
+import { useAuth } from '@/providers/AuthProvider';
 import WalletButton from './WalletButton';
 
 const Navbar = () => {
+  const { user, signOut } = useAuth();
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/70 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
@@ -34,6 +37,23 @@ const Navbar = () => {
         
         <div className="flex items-center gap-4">
           <WalletButton />
+          {user ? (
+            <Button
+              onClick={signOut}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
+          ) : (
+            <Link to="/auth">
+              <Button variant="outline" size="sm">
+                Sign In
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </nav>

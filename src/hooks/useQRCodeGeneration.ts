@@ -13,8 +13,17 @@ export const useQRCodeGeneration = () => {
     try {
       console.log('Generating QR code for ticket:', ticketId);
       
-      // Generate QR code data
-      const qrData = generateQRCodeData(ticketId, eventId, attendeeId);
+      // Fetch attendee profile to get the name
+      const { data: attendeeProfile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', attendeeId)
+        .single();
+
+      const attendeeName = attendeeProfile?.display_name || 'Unknown';
+      
+      // Generate QR code data with attendee name
+      const qrData = generateQRCodeData(ticketId, eventId, attendeeId, attendeeName);
       
       // Generate QR code image
       const qrCodeImage = await generateQRCodeImage(qrData);

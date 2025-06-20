@@ -17,6 +17,7 @@ export interface AttendanceRecord {
   check_in_location: string | null;
   device_info: any;
   created_at: string;
+  attendee_name?: string;
 }
 
 export const useAttendance = () => {
@@ -88,6 +89,13 @@ export const useAttendance = () => {
         throw new Error('This ticket has already been checked in');
       }
 
+      // Get attendee profile to extract name
+      const { data: attendeeProfile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', qrData.attendeeId)
+        .single();
+
       // Get device info
       const deviceInfo = {
         userAgent: navigator.userAgent,
@@ -130,7 +138,14 @@ export const useAttendance = () => {
       }
 
       console.log('Check-in successful:', attendance);
-      return attendance as unknown as AttendanceRecord;
+      
+      // Add attendee name to the response
+      const attendanceWithName = {
+        ...attendance,
+        attendee_name: attendeeProfile?.display_name || qrData.attendeeName || 'Unknown'
+      };
+
+      return attendanceWithName as unknown as AttendanceRecord;
     } catch (error: any) {
       console.error('Error checking in attendee:', error);
       throw error;
@@ -152,7 +167,7 @@ export const useAttendance = () => {
       queryClient.invalidateQueries({ queryKey: ['userTickets'] });
       toast({
         title: 'Check-in Successful',
-        description: 'Attendee has been successfully checked in',
+        description: `${data.attendee_name} has been successfully checked in`,
       });
     },
     onError: (error: any) => {

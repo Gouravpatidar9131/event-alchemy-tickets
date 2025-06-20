@@ -13,12 +13,23 @@ import Footer from '@/components/Footer';
 const AuthPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const { user, signIn, signUp } = useAuth();
 
   // Redirect if already logged in
   if (user) {
     return <Navigate to="/" />;
   }
+
+  const handleSignUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    signUp(email, password, fullName);
+  };
+
+  const handleSignIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    signIn(email, password);
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -42,15 +53,12 @@ const AuthPage = () => {
                 </TabsList>
                 
                 <TabsContent value="signin" className="pt-6">
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    signIn(email, password);
-                  }}>
+                  <form onSubmit={handleSignIn}>
                     <div className="grid gap-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="signin-email">Email</Label>
                         <Input
-                          id="email"
+                          id="signin-email"
                           placeholder="you@example.com"
                           type="email"
                           value={email}
@@ -59,9 +67,9 @@ const AuthPage = () => {
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="password">Password</Label>
+                        <Label htmlFor="signin-password">Password</Label>
                         <Input
-                          id="password"
+                          id="signin-password"
                           type="password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
@@ -76,15 +84,23 @@ const AuthPage = () => {
                 </TabsContent>
                 
                 <TabsContent value="signup" className="pt-6">
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    signUp(email, password);
-                  }}>
+                  <form onSubmit={handleSignUp}>
                     <div className="grid gap-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="signup-name">Full Name</Label>
                         <Input
-                          id="email"
+                          id="signup-name"
+                          placeholder="John Doe"
+                          type="text"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="signup-email">Email</Label>
+                        <Input
+                          id="signup-email"
                           placeholder="you@example.com"
                           type="email"
                           value={email}
@@ -93,9 +109,9 @@ const AuthPage = () => {
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="password">Password</Label>
+                        <Label htmlFor="signup-password">Password</Label>
                         <Input
-                          id="password"
+                          id="signup-password"
                           type="password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
