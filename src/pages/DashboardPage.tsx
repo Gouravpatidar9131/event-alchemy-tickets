@@ -33,7 +33,6 @@ const DashboardPage = () => {
   
   // Enable real-time updates for user tickets
   
-
   const showTicketDetails = (ticketId: string) => {
     console.log('Show details for ticket:', ticketId);
   };
@@ -86,7 +85,6 @@ const DashboardPage = () => {
                     <TicketCard
                       key={ticket.id}
                       ticket={ticket}
-                      showDetails={() => showTicketDetails(ticket.id)}
                     />
                   ))
                 )}
