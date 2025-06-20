@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Scanner as QrScanner } from '@yudiel/react-qr-scanner';
 import { QRCodeData, validateQRCodeData } from '@/utils/qrCodeGenerator';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EnhancedCheckInScannerProps {
   eventId: string;

@@ -23,7 +23,7 @@ export const useQRCodeGeneration = () => {
       const { error } = await supabase
         .from('tickets')
         .update({
-          qr_code_data: qrData,
+          qr_code_data: qrData as any,
           qr_code_generated_at: new Date().toISOString()
         })
         .eq('id', ticketId);

@@ -15,6 +15,8 @@ export interface Ticket {
   mint_address?: string;
   token_id?: string;
   status: 'active' | 'used' | 'cancelled';
+  qr_code_data?: any;
+  qr_code_generated_at?: string;
   events?: {
     id: string;
     title: string;

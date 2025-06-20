@@ -13,7 +13,7 @@ export interface AttendanceRecord {
   attendee_id: string;
   checked_in_at: string;
   checked_in_by: string | null;
-  qr_code_data: QRCodeData;
+  qr_code_data: any;
   check_in_location: string | null;
   device_info: any;
   created_at: string;
@@ -46,7 +46,7 @@ export const useAttendance = () => {
       throw new Error(error.message);
     }
     console.log('Attendance fetched successfully:', data);
-    return data as AttendanceRecord[];
+    return data as unknown as AttendanceRecord[];
   }, []);
 
   const checkInAttendee = async (qrData: QRCodeData, location?: string) => {
@@ -103,7 +103,7 @@ export const useAttendance = () => {
           event_id: qrData.eventId,
           attendee_id: qrData.attendeeId,
           checked_in_by: user.id,
-          qr_code_data: qrData,
+          qr_code_data: qrData as any,
           check_in_location: location,
           device_info: deviceInfo
         })
@@ -130,7 +130,7 @@ export const useAttendance = () => {
       }
 
       console.log('Check-in successful:', attendance);
-      return attendance as AttendanceRecord;
+      return attendance as unknown as AttendanceRecord;
     } catch (error: any) {
       console.error('Error checking in attendee:', error);
       throw error;
