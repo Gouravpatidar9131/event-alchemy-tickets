@@ -165,7 +165,8 @@ export const useTickets = () => {
           ticketType: params.ticketType,
           eventDetails: params.eventDetails,
           currency: params.currency,
-          paymentMethod: params.paymentMethod
+          paymentMethod: params.paymentMethod,
+          attendeeName: user.email?.split('@')[0] || 'Anonymous'
         },
         status: 'active' as const
       };

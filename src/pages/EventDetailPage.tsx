@@ -15,6 +15,7 @@ import { useTickets } from '@/hooks/useTickets';
 import CheckInScanner from '@/components/CheckInScanner';
 import { Badge } from '@/components/ui/badge';
 import RealtimeTicketCounter from '@/components/RealtimeTicketCounter';
+import EnhancedCheckInScanner from '@/components/EnhancedCheckInScanner';
 
 // Chain-specific token configurations
 const CHAIN_TOKENS: Record<number, { name: string; symbol: string; priceMultiplier: number }> = {
@@ -250,7 +251,7 @@ const EventDetailPage = () => {
                               {eventTickets.map((ticket) => (
                                 <tr key={ticket.id}>
                                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                    Anonymous
+                                    {ticket.metadata?.attendeeName || 'Anonymous'}
                                   </td>
                                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                                     {format(new Date(ticket.purchase_date), 'MMM d, yyyy')}
@@ -276,8 +277,8 @@ const EventDetailPage = () => {
                     
                     <Separator className="my-6" />
                     
-                    <h3 className="text-xl font-semibold mb-4">Check-In Attendees</h3>
-                    <CheckInScanner eventId={id || ''} />
+                    <h3 className="text-xl font-semibold mb-4">Enhanced Check-In Scanner</h3>
+                    <EnhancedCheckInScanner eventId={id || ''} />
                   </CardContent>
                 </Card>
               </TabsContent>

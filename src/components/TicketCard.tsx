@@ -1,178 +1,119 @@
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Clock, MapPin, QrCode, ArrowRight } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { QRCodeSVG } from 'qrcode.react';
+import { Calendar, MapPin, Clock, QrCode, User } from 'lucide-react';
+import { format } from 'date-fns';
+import { Ticket } from '@/hooks/useTickets';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import QRCodeDisplay from './QRCodeDisplay';
 
 interface TicketCardProps {
-  ticket: any;
-  showDetails?: () => void;
+  ticket: Ticket;
 }
 
-const TicketCard = ({ ticket, showDetails }: TicketCardProps) => {
-  const [showQR, setShowQR] = useState(false);
+const TicketCard = ({ ticket }: TicketCardProps) => {
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   
-  const event = ticket.events;
-  
-  const formatDate = (dateString: string) => {
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch (e) {
-      return dateString;
-    }
-  };
-  
-  const getStatusColor = () => {
-    switch (ticket.status) {
-      case 'active':
-        return 'bg-green-500 hover:bg-green-600';
+  const getStatusColor = (status: string) => {
+    switch (status) {
       case 'used':
-        return 'bg-gray-500 hover:bg-gray-600';
-      case 'transferred':
-        return 'bg-blue-500 hover:bg-blue-600';
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       default:
-        return 'bg-gray-500 hover:bg-gray-600';
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
     }
   };
-  
-  const toggleQR = () => {
-    setShowQR(!showQR);
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'used':
+        return 'Checked In';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'Active';
+    }
   };
-  
-  // Create standardized QR data that the scanner expects
-  const qrData = JSON.stringify({
-    ticketId: ticket.id,
-    eventId: ticket.event_id,
-    ownerId: ticket.owner_id,
-    status: ticket.status,
-    purchaseDate: ticket.purchase_date,
-    mintAddress: ticket.mint_address || null,
-    metadata: ticket.metadata
-  });
+
+  const event = ticket.events;
+  if (!event) return null;
 
   return (
-    <Card className="overflow-hidden glass-card border-none ticket-shadow">
-      <div className={`h-2 w-full ${getStatusColor()}`}></div>
-      
-      <div className="p-5">
-        <div className="flex justify-between items-start mb-4">
-          <h3 className="text-lg font-bold truncate">{event?.title || 'Unknown Event'}</h3>
-          <Badge className={
-            ticket.status === 'active' ? 'bg-green-500/20 text-green-500' :
-            ticket.status === 'used' ? 'bg-gray-500/20 text-gray-500' :
-            'bg-blue-500/20 text-blue-500'
-          }>
-            {ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}
-          </Badge>
-        </div>
-        
-        {event?.image_url && (
-          <div className="relative mb-4 h-32 rounded-md overflow-hidden">
-            <img 
-              src={event.image_url} 
-              alt={event.title} 
-              className="w-full h-full object-cover"
-            />
-            {ticket.status === 'used' && (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span className="text-white font-bold text-lg transform rotate-[-20deg] border-4 border-white px-3 py-1 rounded">
-                  USED
-                </span>
-              </div>
-            )}
+    <>
+      <Card className="w-full hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="text-lg">{event.title}</CardTitle>
+              <CardDescription className="flex items-center gap-2 mt-1">
+                <MapPin className="h-4 w-4" />
+                {event.location}
+              </CardDescription>
+            </div>
+            <Badge className={getStatusColor(ticket.status)}>
+              {getStatusText(ticket.status)}
+            </Badge>
           </div>
-        )}
-        
-        {showQR ? (
-          <div className="flex flex-col items-center justify-center space-y-4 my-6 px-4">
-            <div className="p-4 bg-white rounded-lg">
-              <QRCodeSVG 
-                value={qrData} 
-                size={180} 
-                level="H"
-                includeMargin={true}
-                bgColor="#ffffff"
-                fgColor="#000000"
-              />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span>{format(new Date(event.date), 'MMM d, yyyy')}</span>
             </div>
-            <div className="text-center space-y-2">
-              <p className="text-sm font-medium text-foreground">
-                Present this QR code at the event entrance
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Ticket ID: {ticket.id.substring(0, 8)}...{ticket.id.substring(ticket.id.length - 4)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Event: {event?.title}
-              </p>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span>{format(new Date(event.date), 'h:mm a')}</span>
             </div>
-            <Button variant="outline" size="sm" onClick={toggleQR}>
-              Hide QR Code
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3 my-4">
-            <div className="flex items-center">
-              <CalendarDays className="h-4 w-4 mr-2 text-muted-foreground" />
-              <span className="text-sm">{formatDate(event?.date || '')}</span>
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span>{ticket.metadata?.attendeeName || 'Anonymous'}</span>
             </div>
-            <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-              <span className="text-sm">
-                Purchased {formatDistanceToNow(new Date(ticket.purchase_date), { addSuffix: true })}
+            <div className="text-sm">
+              <span className="font-medium">
+                {ticket.metadata?.currency} {ticket.purchase_price}
               </span>
             </div>
-            <div className="flex items-center">
-              <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-              <span className="text-sm truncate">{event?.location || 'Unknown location'}</span>
-            </div>
-            {ticket.metadata?.ticketType && (
-              <div className="flex items-center">
-                <QrCode className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="text-sm">{ticket.metadata.ticketType}</span>
-              </div>
-            )}
           </div>
-        )}
-        
-        <div className="border-t border-border pt-3 flex justify-between items-center">
-          {ticket.status === 'active' && !showQR && (
-            <Button variant="outline" size="sm" onClick={toggleQR}>
-              <QrCode className="h-4 w-4 mr-1" />
-              Show QR Code
-            </Button>
-          )}
-          {ticket.status === 'used' && (
-            <span className="text-sm text-muted-foreground">
-              Used on {ticket.checked_in_at ? formatDate(ticket.checked_in_at) : 'unknown date'}
-            </span>
-          )}
-          {ticket.status === 'transferred' && (
-            <span className="text-sm text-muted-foreground">
-              Transferred to another wallet
-            </span>
-          )}
           
-          {showDetails && (
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="ml-auto text-solana-purple" 
-              onClick={showDetails}
-            >
-              Details
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
+          {ticket.checked_in_at && (
+            <div className="text-sm text-muted-foreground bg-green-50 p-2 rounded">
+              <strong>Checked in:</strong> {format(new Date(ticket.checked_in_at), 'MMM d, yyyy h:mm a')}
+            </div>
           )}
-        </div>
-      </div>
-    </Card>
+
+          <div className="flex gap-2">
+            <Dialog open={isQRModalOpen} onOpenChange={setIsQRModalOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  disabled={ticket.status === 'cancelled'}
+                >
+                  <QrCode className="h-4 w-4" />
+                  {ticket.qr_code_data ? 'View QR Code' : 'Generate QR Code'}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Ticket QR Code</DialogTitle>
+                </DialogHeader>
+                <QRCodeDisplay
+                  ticketId={ticket.id}
+                  eventId={ticket.event_id}
+                  attendeeId={ticket.owner_id}
+                  existingQRData={ticket.qr_code_data}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 };
 

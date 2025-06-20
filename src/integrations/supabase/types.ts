@@ -9,6 +9,74 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          attendee_id: string
+          check_in_location: string | null
+          checked_in_at: string
+          checked_in_by: string | null
+          created_at: string
+          device_info: Json | null
+          event_id: string
+          id: string
+          qr_code_data: Json | null
+          ticket_id: string
+        }
+        Insert: {
+          attendee_id: string
+          check_in_location?: string | null
+          checked_in_at?: string
+          checked_in_by?: string | null
+          created_at?: string
+          device_info?: Json | null
+          event_id: string
+          id?: string
+          qr_code_data?: Json | null
+          ticket_id: string
+        }
+        Update: {
+          attendee_id?: string
+          check_in_location?: string | null
+          checked_in_at?: string
+          checked_in_by?: string | null
+          created_at?: string
+          device_info?: Json | null
+          event_id?: string
+          id?: string
+          qr_code_data?: Json | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_attendee_id_fkey"
+            columns: ["attendee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_checked_in_by_fkey"
+            columns: ["checked_in_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           candy_machine_id: string | null
@@ -112,6 +180,8 @@ export type Database = {
           owner_id: string
           purchase_date: string | null
           purchase_price: number
+          qr_code_data: Json | null
+          qr_code_generated_at: string | null
           status: string
           token_id: string | null
         }
@@ -124,6 +194,8 @@ export type Database = {
           owner_id: string
           purchase_date?: string | null
           purchase_price: number
+          qr_code_data?: Json | null
+          qr_code_generated_at?: string | null
           status?: string
           token_id?: string | null
         }
@@ -136,6 +208,8 @@ export type Database = {
           owner_id?: string
           purchase_date?: string | null
           purchase_price?: number
+          qr_code_data?: Json | null
+          qr_code_generated_at?: string | null
           status?: string
           token_id?: string | null
         }
