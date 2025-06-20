@@ -160,12 +160,11 @@ const CheckInScanner = ({ eventId }: CheckInScannerProps) => {
             {isScanning && (
               <div className="border rounded-lg p-4 bg-gray-50">
                 <QrScanner
-                  onDecode={handleQRScan}
+                  onScan={handleQRScan}
                   onError={handleQRError}
-                  constraints={{
-                    width: 300,
-                    height: 300,
-                    facingMode: 'environment'
+                  style={{
+                    width: '300px',
+                    height: '300px',
                   }}
                 />
               </div>
