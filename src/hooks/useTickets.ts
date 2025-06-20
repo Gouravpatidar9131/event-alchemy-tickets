@@ -209,6 +209,30 @@ export const useTickets = () => {
     
     try {
       console.log(`Checking in ticket ${ticketId}`);
+      
+      // First, get the ticket to verify it exists and get its current status
+      const { data: ticketData, error: fetchError } = await supabase
+        .from('tickets')
+        .select('*, events!tickets_event_id_fkey(*)')
+        .eq('id', ticketId)
+        .single();
+
+      if (fetchError) {
+        console.error(`Error fetching ticket ${ticketId}:`, fetchError);
+        throw new Error('Ticket not found');
+      }
+
+      // Check if ticket is already used
+      if (ticketData.status === 'used') {
+        throw new Error('This ticket has already been checked in');
+      }
+
+      // Check if ticket is cancelled
+      if (ticketData.status === 'cancelled') {
+        throw new Error('This ticket has been cancelled');
+      }
+
+      // Update the ticket status to used
       const { data, error } = await supabase
         .from('tickets')
         .update({
@@ -216,14 +240,14 @@ export const useTickets = () => {
           status: 'used'
         })
         .eq('id', ticketId)
-        .eq('owner_id', user.id)
-        .select()
+        .select('*, events!tickets_event_id_fkey(*)')
         .single();
 
       if (error) {
         console.error(`Error checking in ticket ${ticketId}:`, error);
-        throw new Error(error.message);
+        throw new Error('Failed to check in ticket. Please try again.');
       }
+      
       console.log('Ticket checked in successfully:', data);
       return data as Ticket;
     } catch (error: any) {
@@ -270,9 +294,10 @@ export const useTickets = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['userTickets'] });
       queryClient.invalidateQueries({ queryKey: ['eventTickets'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
       toast({
         title: 'Ticket checked in',
-        description: 'Ticket has been successfully checked in',
+        description: `Ticket has been successfully checked in for ${data.events?.title}`,
       });
     },
     onError: (error: any) => {

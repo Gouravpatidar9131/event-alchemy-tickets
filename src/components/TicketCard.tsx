@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +15,7 @@ const TicketCard = ({ ticket, showDetails }: TicketCardProps) => {
   const [showQR, setShowQR] = useState(false);
   
   const event = ticket.events;
+  
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
@@ -45,14 +45,14 @@ const TicketCard = ({ ticket, showDetails }: TicketCardProps) => {
     setShowQR(!showQR);
   };
   
-  // Create unique QR data for each ticket
+  // Create standardized QR data that the scanner expects
   const qrData = JSON.stringify({
     ticketId: ticket.id,
     eventId: ticket.event_id,
     ownerId: ticket.owner_id,
     status: ticket.status,
     purchaseDate: ticket.purchase_date,
-    mintAddress: ticket.mint_address || 'none',
+    mintAddress: ticket.mint_address || null,
     metadata: ticket.metadata
   });
 
@@ -90,14 +90,28 @@ const TicketCard = ({ ticket, showDetails }: TicketCardProps) => {
         )}
         
         {showQR ? (
-          <div className="flex flex-col items-center justify-center space-y-3 my-4">
-            <QRCodeSVG value={qrData} size={150} level="H" />
-            <p className="text-sm text-center text-muted-foreground">
-              Present this QR code at the event entrance
-            </p>
-            <p className="text-xs text-center text-muted-foreground">
-              Ticket ID: {ticket.id.substring(0, 8)}...
-            </p>
+          <div className="flex flex-col items-center justify-center space-y-4 my-6 px-4">
+            <div className="p-4 bg-white rounded-lg">
+              <QRCodeSVG 
+                value={qrData} 
+                size={180} 
+                level="H"
+                includeMargin={true}
+                bgColor="#ffffff"
+                fgColor="#000000"
+              />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                Present this QR code at the event entrance
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Ticket ID: {ticket.id.substring(0, 8)}...{ticket.id.substring(ticket.id.length - 4)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Event: {event?.title}
+              </p>
+            </div>
             <Button variant="outline" size="sm" onClick={toggleQR}>
               Hide QR Code
             </Button>
