@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useTickets, Ticket } from '@/hooks/useTickets';
 import { useEvents } from '@/hooks/useEvents';
@@ -164,9 +165,11 @@ const CheckInScanner = ({ eventId }: CheckInScannerProps) => {
                 <QrScanner
                   onScan={handleQRScan}
                   onError={handleQRError}
-                  style={{
-                    width: '300px',
-                    height: '300px',
+                  styles={{
+                    container: {
+                      width: '300px',
+                      height: '300px',
+                    },
                   }}
                 />
               </div>
