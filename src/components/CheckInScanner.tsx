@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useTickets, Ticket } from '@/hooks/useTickets';
 import { useEvents } from '@/hooks/useEvents';
@@ -36,32 +35,35 @@ const CheckInScanner = ({ eventId }: CheckInScannerProps) => {
   const { useEventQuery } = useEvents();
   const { data: event } = useEventQuery(eventId);
 
-  const handleQRScan = async (result: string) => {
-    console.log('QR Code scanned:', result);
-    try {
-      // Parse the QR code data
-      const qrData = JSON.parse(result);
-      
-      // Validate that this QR code is for the correct event
-      if (qrData.eventId !== eventId) {
+  const handleQRScan = async (detectedCodes: any[]) => {
+    if (detectedCodes && detectedCodes.length > 0) {
+      const result = detectedCodes[0].rawValue;
+      console.log('QR Code scanned:', result);
+      try {
+        // Parse the QR code data
+        const qrData = JSON.parse(result);
+        
+        // Validate that this QR code is for the correct event
+        if (qrData.eventId !== eventId) {
+          setScanResult({
+            success: false,
+            message: 'This ticket is not for this event'
+          });
+          setIsScanning(false);
+          return;
+        }
+
+        // Check in the ticket
+        await checkInTicket(qrData.ticketId);
+        setIsScanning(false);
+      } catch (error) {
+        console.error('Error parsing QR code:', error);
         setScanResult({
           success: false,
-          message: 'This ticket is not for this event'
+          message: 'Invalid QR code format'
         });
         setIsScanning(false);
-        return;
       }
-
-      // Check in the ticket
-      await checkInTicket(qrData.ticketId);
-      setIsScanning(false);
-    } catch (error) {
-      console.error('Error parsing QR code:', error);
-      setScanResult({
-        success: false,
-        message: 'Invalid QR code format'
-      });
-      setIsScanning(false);
     }
   };
 
