@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
@@ -31,7 +30,7 @@ const CreateEventPage = () => {
   const { user } = useAuth();
   const { chainId, isConnected } = useCDPWallet();
   const navigate = useNavigate();
-  const { createEventMutation } = useEventCreation();
+  const { createEvent, isCreating } = useEventCreation();
   
   const [formData, setFormData] = useState({
     title: '',
@@ -94,18 +93,20 @@ const CreateEventPage = () => {
       const chainPrice = parseFloat(formData.price) || 0;
       const basePrice = getBasePriceFromChainPrice(chainPrice);
 
-      await createEventMutation.mutateAsync({
+      const success = await createEvent({
         title: formData.title,
         description: formData.description,
         location: formData.location,
-        datetime: dateTime.toISOString(),
+        date: dateTime.toISOString(),
         price: basePrice, // Store base price in database
-        totalTickets: parseInt(formData.totalTickets),
-        imageFile: formData.imageFile,
+        total_tickets: parseInt(formData.totalTickets),
+        image_url: formData.imageFile ? URL.createObjectURL(formData.imageFile) : '',
       });
 
-      toast('Event created successfully!');
-      navigate('/dashboard');
+      if (success) {
+        toast('Event created successfully!');
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       console.error('Error creating event:', error);
       toast('Failed to create event', {
@@ -278,9 +279,9 @@ const CreateEventPage = () => {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={createEventMutation.isPending}
+                disabled={isCreating}
               >
-                {createEventMutation.isPending ? (
+                {isCreating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Creating Event...
