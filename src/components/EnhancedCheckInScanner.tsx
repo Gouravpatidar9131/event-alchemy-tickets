@@ -5,7 +5,7 @@ import { useEvents } from '@/hooks/useEvents';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { QrCode, CheckCircle, XCircle, Search, Loader2, Camera, User, Clock, MapPin } from 'lucide-react';
+import { QrCode, CheckCircle, XCircle, Search, Loader2, Camera, User, Clock, MapPin, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Scanner as QrScanner } from '@yudiel/react-qr-scanner';
 import { QRCodeData, validateQRCodeData } from '@/utils/qrCodeGenerator';
@@ -50,6 +50,22 @@ const EnhancedCheckInScanner = ({ eventId }: EnhancedCheckInScannerProps) => {
           console.log('Real-time attendance update:', payload);
           refetchAttendance();
           toast('✅ New attendee checked in!');
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'attendance',
+          filter: `event_id=eq.${eventId}`
+        },
+        (payload) => {
+          console.log('Real-time NFT update:', payload);
+          if (payload.new.nft_status === 'minted') {
+            toast('🎉 NFT minted for attendee!');
+            refetchAttendance();
+          }
         }
       )
       .subscribe();
@@ -113,7 +129,7 @@ const EnhancedCheckInScanner = ({ eventId }: EnhancedCheckInScannerProps) => {
 
       setScanResult({
         success: true,
-        message: 'Successfully checked in!',
+        message: 'Successfully checked in! NFT minting in progress...',
         attendanceData: attendanceRecord
       });
 
@@ -153,6 +169,16 @@ const EnhancedCheckInScanner = ({ eventId }: EnhancedCheckInScannerProps) => {
     return attendance?.length || 0;
   };
 
+  const getNFTStats = () => {
+    if (!attendance) return { minted: 0, pending: 0 };
+    return {
+      minted: attendance.filter(a => a.nft_status === 'minted').length,
+      pending: attendance.filter(a => a.nft_status === 'pending').length
+    };
+  };
+
+  const nftStats = getNFTStats();
+
   return (
     <div className="space-y-6">
       {/* Event Info */}
@@ -172,6 +198,16 @@ const EnhancedCheckInScanner = ({ eventId }: EnhancedCheckInScannerProps) => {
               <User className="h-4 w-4" />
               {getTotalCheckedIn()} checked in
             </div>
+            <div className="flex items-center gap-1">
+              <Trophy className="h-4 w-4 text-yellow-500" />
+              {nftStats.minted} NFTs minted
+            </div>
+            {nftStats.pending > 0 && (
+              <div className="flex items-center gap-1">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                {nftStats.pending} minting
+              </div>
+            )}
             <div className="flex items-center gap-1">
               <Clock className="h-4 w-4" />
               {new Date().toLocaleTimeString()}
@@ -277,6 +313,10 @@ const EnhancedCheckInScanner = ({ eventId }: EnhancedCheckInScannerProps) => {
                     {scanResult.attendanceData.check_in_location && (
                       <p>Location: {scanResult.attendanceData.check_in_location}</p>
                     )}
+                    <div className="flex items-center gap-2 mt-1">
+                      <Trophy className="h-4 w-4 text-yellow-500" />
+                      <span className="text-yellow-700">NFT minting initiated</span>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -304,6 +344,18 @@ const EnhancedCheckInScanner = ({ eventId }: EnhancedCheckInScannerProps) => {
                     {record.check_in_location && (
                       <Badge variant="secondary" className="text-xs">
                         {record.check_in_location}
+                      </Badge>
+                    )}
+                    {record.nft_status === 'minted' && (
+                      <Badge className="text-xs bg-yellow-100 text-yellow-800">
+                        <Trophy className="h-3 w-3 mr-1" />
+                        NFT
+                      </Badge>
+                    )}
+                    {record.nft_status === 'pending' && (
+                      <Badge variant="outline" className="text-xs">
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Minting
                       </Badge>
                     )}
                   </div>
