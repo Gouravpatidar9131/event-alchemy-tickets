@@ -1,8 +1,20 @@
+
 import { Calendar, Clock, MapPin, Image } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useState } from 'react';
+import { useCDPWallet } from '@/providers/CDPWalletProvider';
+
+// Chain-specific token configurations
+const CHAIN_TOKENS: Record<number, { name: string; symbol: string; priceMultiplier: number }> = {
+  1: { name: 'Ethereum', symbol: 'ETH', priceMultiplier: 1 },
+  137: { name: 'Polygon', symbol: 'MATIC', priceMultiplier: 0.5 },
+  42161: { name: 'Arbitrum', symbol: 'ETH', priceMultiplier: 0.8 },
+  10: { name: 'Optimism', symbol: 'ETH', priceMultiplier: 0.8 },
+  8453: { name: 'Base', symbol: 'ETH', priceMultiplier: 0.7 },
+  43114: { name: 'Avalanche', symbol: 'AVAX', priceMultiplier: 0.3 },
+};
 
 interface EventCardProps {
   id: string;
@@ -29,6 +41,23 @@ const EventCard = ({
 }: EventCardProps) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const { chainId, isConnected } = useCDPWallet();
+
+  // Get current chain token info
+  const getCurrentChainToken = () => {
+    return chainId ? CHAIN_TOKENS[chainId] || { name: 'Unknown', symbol: 'ETH', priceMultiplier: 1 } : { name: 'Ethereum', symbol: 'ETH', priceMultiplier: 1 };
+  };
+
+  const chainToken = getCurrentChainToken();
+
+  // Calculate chain-adjusted price
+  const getChainAdjustedPrice = () => {
+    const basePrice = parseFloat(price) || 0;
+    if (basePrice === 0) return 'Free';
+    
+    const adjustedPrice = basePrice * chainToken.priceMultiplier;
+    return `${adjustedPrice.toFixed(4)} ${chainToken.symbol}`;
+  };
 
   // Get a reliable fallback image
   const getFallbackImage = () => {
@@ -124,6 +153,15 @@ const EventCard = ({
              availability === 'limited' ? 'Limited Tickets' : 'Sold Out'}
           </Badge>
         </div>
+
+        {/* Chain-specific pricing badge */}
+        {isConnected && chainToken.priceMultiplier !== 1 && parseFloat(price) > 0 && (
+          <div className="absolute top-3 left-3">
+            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+              {Math.round((1 - chainToken.priceMultiplier) * 100)}% off on {chainToken.name}
+            </Badge>
+          </div>
+        )}
       </div>
       
       <div className="p-5">
@@ -146,7 +184,12 @@ const EventCard = ({
         </div>
         <div className="flex items-center justify-between mt-4">
           <Badge variant="outline" className="bg-accent">{category}</Badge>
-          <span className="font-bold text-solana-blue">{price}</span>
+          <div className="text-right">
+            <span className="font-bold text-solana-blue">{getChainAdjustedPrice()}</span>
+            {isConnected && chainId && parseFloat(price) > 0 && (
+              <div className="text-xs text-muted-foreground">on {chainToken.name}</div>
+            )}
+          </div>
         </div>
         <div className="mt-4">
           <Link to={`/events/${id}`}>
