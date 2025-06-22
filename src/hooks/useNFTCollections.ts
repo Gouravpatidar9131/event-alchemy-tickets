@@ -18,6 +18,18 @@ export interface NFTCollection {
   updated_at: string;
 }
 
+export interface CreateNFTCollectionData {
+  event_id: string;
+  collection_name: string;
+  collection_symbol: string;
+  collection_description?: string;
+  base_metadata_uri?: string;
+  opensea_collection_slug?: string;
+  contract_address_ethereum?: string;
+  contract_address_polygon?: string;
+  contract_address_base?: string;
+}
+
 export const useNFTCollections = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -40,7 +52,7 @@ export const useNFTCollections = () => {
   });
 
   const createNFTCollectionMutation = useMutation({
-    mutationFn: async (collectionData: Partial<NFTCollection>) => {
+    mutationFn: async (collectionData: CreateNFTCollectionData) => {
       const { data, error } = await supabase
         .from('nft_collections')
         .insert(collectionData)

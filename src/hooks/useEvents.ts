@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -18,6 +19,10 @@ export type Event = {
   mint_address?: string;
   candy_machine_id?: string;
   is_published: boolean;
+  nft_enabled?: boolean;
+  nft_artwork_url?: string;
+  nft_collection_name?: string;
+  nft_description_template?: string;
   created_at: string;
   updated_at: string;
 };
