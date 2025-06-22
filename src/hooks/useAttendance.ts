@@ -18,6 +18,10 @@ export interface AttendanceRecord {
   device_info: any;
   created_at: string;
   attendee_name?: string;
+  nft_minted_at?: string | null;
+  nft_status?: string | null;
+  nft_mint_address?: string | null;
+  nft_metadata_uri?: string | null;
 }
 
 export const useAttendance = () => {
@@ -103,7 +107,7 @@ export const useAttendance = () => {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       };
 
-      // Create attendance record
+      // Create attendance record - the trigger will set nft_status to 'pending'
       const { data: attendance, error: attendanceError } = await supabase
         .from('attendance')
         .insert({
@@ -145,6 +149,21 @@ export const useAttendance = () => {
         attendee_name: attendeeProfile?.display_name || qrData.attendeeName || 'Unknown'
       };
 
+      // If NFT is enabled for the event, automatically trigger minting
+      if (ticket.events?.nft_enabled) {
+        try {
+          await supabase.functions.invoke('mint-attendance-nft', {
+            body: { 
+              attendanceId: attendance.id,
+              chain: 'base' // Default to Base chain
+            }
+          });
+        } catch (nftError) {
+          console.error('NFT minting error:', nftError);
+          // Don't fail the check-in if NFT minting fails
+        }
+      }
+
       return attendanceWithName as unknown as AttendanceRecord;
     } catch (error: any) {
       console.error('Error checking in attendee:', error);
@@ -167,7 +186,7 @@ export const useAttendance = () => {
       queryClient.invalidateQueries({ queryKey: ['userTickets'] });
       toast({
         title: 'Check-in Successful',
-        description: `${data.attendee_name} has been successfully checked in`,
+        description: `${data.attendee_name} has been successfully checked in${data.nft_status === 'pending' ? '. NFT minting initiated!' : ''}`,
       });
     },
     onError: (error: any) => {

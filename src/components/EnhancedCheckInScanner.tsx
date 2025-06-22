@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAttendance } from '@/hooks/useAttendance';
 import { useEvents } from '@/hooks/useEvents';
@@ -11,6 +10,7 @@ import { Scanner as QrScanner } from '@yudiel/react-qr-scanner';
 import { QRCodeData, validateQRCodeData } from '@/utils/qrCodeGenerator';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import NFTAttendanceBadge from './NFTAttendanceBadge';
 
 interface EnhancedCheckInScannerProps {
   eventId: string;
@@ -50,6 +50,19 @@ const EnhancedCheckInScanner = ({ eventId }: EnhancedCheckInScannerProps) => {
           console.log('Real-time attendance update:', payload);
           refetchAttendance();
           toast('✅ New attendee checked in!');
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'attendance',
+          filter: `event_id=eq.${eventId}`
+        },
+        (payload) => {
+          console.log('Real-time attendance NFT update:', payload);
+          refetchAttendance();
         }
       )
       .subscribe();
@@ -164,6 +177,11 @@ const EnhancedCheckInScanner = ({ eventId }: EnhancedCheckInScannerProps) => {
           </CardTitle>
           <CardDescription>
             Scanning for: {event?.title}
+            {event?.nft_enabled && (
+              <Badge variant="secondary" className="ml-2">
+                NFT Enabled
+              </Badge>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -272,10 +290,18 @@ const EnhancedCheckInScanner = ({ eventId }: EnhancedCheckInScannerProps) => {
                   </span>
                 </div>
                 {scanResult.attendanceData && (
-                  <div className="mt-2 text-sm text-gray-600">
-                    <p>Checked in at: {new Date(scanResult.attendanceData.checked_in_at).toLocaleString()}</p>
-                    {scanResult.attendanceData.check_in_location && (
-                      <p>Location: {scanResult.attendanceData.check_in_location}</p>
+                  <div className="mt-3 space-y-2">
+                    <div className="text-sm text-gray-600">
+                      <p>Checked in at: {new Date(scanResult.attendanceData.checked_in_at).toLocaleString()}</p>
+                      {scanResult.attendanceData.check_in_location && (
+                        <p>Location: {scanResult.attendanceData.check_in_location}</p>
+                      )}
+                    </div>
+                    {event?.nft_enabled && (
+                      <NFTAttendanceBadge 
+                        attendance={scanResult.attendanceData} 
+                        eventNftEnabled={event?.nft_enabled}
+                      />
                     )}
                   </div>
                 )}
@@ -295,21 +321,29 @@ const EnhancedCheckInScanner = ({ eventId }: EnhancedCheckInScannerProps) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-3 max-h-96 overflow-y-auto">
               {attendance.slice(0, 10).map((record) => (
-                <div key={record.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <span className="font-mono text-sm">{record.ticket_id.slice(0, 8)}...</span>
-                    {record.check_in_location && (
-                      <Badge variant="secondary" className="text-xs">
-                        {record.check_in_location}
-                      </Badge>
-                    )}
+                <div key={record.id} className="space-y-2">
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      <span className="font-mono text-sm">{record.ticket_id.slice(0, 8)}...</span>
+                      {record.check_in_location && (
+                        <Badge variant="secondary" className="text-xs">
+                          {record.check_in_location}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {new Date(record.checked_in_at).toLocaleTimeString()}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500">
-                    {new Date(record.checked_in_at).toLocaleTimeString()}
-                  </span>
+                  {event?.nft_enabled && (
+                    <NFTAttendanceBadge 
+                      attendance={record} 
+                      eventNftEnabled={event?.nft_enabled}
+                    />
+                  )}
                 </div>
               ))}
             </div>
