@@ -4,54 +4,47 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/providers/AuthProvider";
-import { SolanaProvider } from "@/providers/SolanaProvider";
-import { EthereumProvider } from "@/providers/EthereumProvider";
-import { CDPWalletProvider } from "@/providers/CDPWalletProvider";
+import { CDPWalletProvider } from "./providers/CDPWalletProvider";
+import { AuthProvider } from "./providers/AuthProvider";
 import Index from "./pages/Index";
-import AuthPage from "./pages/AuthPage";
-import DashboardPage from "./pages/DashboardPage";
-import CreateEventPage from "./pages/CreateEventPage";
+import NotFound from "./pages/NotFound";
 import EventsPage from "./pages/EventsPage";
 import EventDetailPage from "./pages/EventDetailPage";
-import NFTGalleryPage from "./pages/NFTGalleryPage";
-import NotFound from "./pages/NotFound";
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
+import DashboardPage from "./pages/DashboardPage";
+import CreateEventPage from "./pages/CreateEventPage";
+import AuthPage from "./pages/AuthPage";
 
-const queryClient = new QueryClient();
+// Create a stable query client instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+      retry: 3,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <CDPWalletProvider>
-      <EthereumProvider>
-        <SolanaProvider>
+      <BrowserRouter>
+        <AuthProvider>
           <TooltipProvider>
-            <BrowserRouter>
-              <AuthProvider>
-                <Toaster />
-                <Sonner />
-                <div className="min-h-screen bg-background flex flex-col">
-                  <Navbar />
-                  <main className="flex-1">
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/auth" element={<AuthPage />} />
-                      <Route path="/dashboard" element={<DashboardPage />} />
-                      <Route path="/create-event" element={<CreateEventPage />} />
-                      <Route path="/events" element={<EventsPage />} />
-                      <Route path="/events/:id" element={<EventDetailPage />} />
-                      <Route path="/nft-gallery" element={<NFTGalleryPage />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </main>
-                  <Footer />
-                </div>
-              </AuthProvider>
-            </BrowserRouter>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/events" element={<EventsPage />} />
+              <Route path="/events/:id" element={<EventDetailPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/create" element={<CreateEventPage />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </TooltipProvider>
-        </SolanaProvider>
-      </EthereumProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </CDPWalletProvider>
   </QueryClientProvider>
 );

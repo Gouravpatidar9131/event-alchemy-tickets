@@ -19,10 +19,6 @@ export type Database = {
           device_info: Json | null
           event_id: string
           id: string
-          nft_metadata_uri: string | null
-          nft_mint_address: string | null
-          nft_minted_at: string | null
-          nft_status: string | null
           qr_code_data: Json | null
           ticket_id: string
         }
@@ -35,10 +31,6 @@ export type Database = {
           device_info?: Json | null
           event_id: string
           id?: string
-          nft_metadata_uri?: string | null
-          nft_mint_address?: string | null
-          nft_minted_at?: string | null
-          nft_status?: string | null
           qr_code_data?: Json | null
           ticket_id: string
         }
@@ -51,10 +43,6 @@ export type Database = {
           device_info?: Json | null
           event_id?: string
           id?: string
-          nft_metadata_uri?: string | null
-          nft_mint_address?: string | null
-          nft_minted_at?: string | null
-          nft_status?: string | null
           qr_code_data?: Json | null
           ticket_id?: string
         }
@@ -101,10 +89,6 @@ export type Database = {
           is_published: boolean | null
           location: string
           mint_address: string | null
-          nft_artwork_url: string | null
-          nft_collection_name: string | null
-          nft_description_template: string | null
-          nft_enabled: boolean | null
           price: number
           tickets_sold: number | null
           title: string
@@ -122,10 +106,6 @@ export type Database = {
           is_published?: boolean | null
           location: string
           mint_address?: string | null
-          nft_artwork_url?: string | null
-          nft_collection_name?: string | null
-          nft_description_template?: string | null
-          nft_enabled?: boolean | null
           price: number
           tickets_sold?: number | null
           title: string
@@ -143,10 +123,6 @@ export type Database = {
           is_published?: boolean | null
           location?: string
           mint_address?: string | null
-          nft_artwork_url?: string | null
-          nft_collection_name?: string | null
-          nft_description_template?: string | null
-          nft_enabled?: boolean | null
           price?: number
           tickets_sold?: number | null
           title?: string

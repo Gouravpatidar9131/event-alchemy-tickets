@@ -1,4 +1,7 @@
+
 import { useState, useEffect } from 'react';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import EventCard from '@/components/EventCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -175,110 +178,114 @@ const EventsPage = () => {
   }, [error, toast]);
 
   return (
-    <div className="pt-24 pb-16 px-4">
-      <div className="container mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-6">Discover Events</h1>
-          
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search events by name or location..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <main className="flex-grow pt-24 pb-16 px-4">
+        <div className="container mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-6">Discover Events</h1>
             
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category}>{category}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search events by name or location..."
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
               
-              <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Availability" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Tickets</SelectItem>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="limited">Limited</SelectItem>
-                  <SelectItem value="sold out">Sold Out</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Button variant="outline" className="glass-button">
-                <SlidersHorizontal className="h-4 w-4 mr-2" />
-                More Filters
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map(category => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={availabilityFilter} onValueChange={setAvailabilityFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Availability" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Tickets</SelectItem>
+                    <SelectItem value="available">Available</SelectItem>
+                    <SelectItem value="limited">Limited</SelectItem>
+                    <SelectItem value="sold out">Sold Out</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Button variant="outline" className="glass-button">
+                  <SlidersHorizontal className="h-4 w-4 mr-2" />
+                  More Filters
+                </Button>
+              </div>
             </div>
           </div>
+          
+          <div className="min-h-[400px]">
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-4">
+                {[...Array(8)].map((_, index) => (
+                  <div key={index} className="glass-card rounded-xl h-96 animate-pulse bg-muted/50" />
+                ))}
+              </div>
+            ) : error ? (
+              <div className="text-center py-12">
+                <p className="text-xl text-destructive">
+                  Error loading events: {error.message}
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4 glass-button"
+                  onClick={() => {
+                    console.log('Manual refetch triggered');
+                    refetch();
+                  }}
+                >
+                  Try Again
+                </Button>
+              </div>
+            ) : filteredEvents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-4">
+                {filteredEvents.map((event) => (
+                  <EventCard 
+                    key={event.id}
+                    {...event}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-xl text-muted-foreground">
+                  {eventsData.length === 0 
+                    ? "No events have been created yet. Be the first to create one!" 
+                    : "No events found matching your criteria."
+                  }
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4 glass-button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCategoryFilter('all');
+                    setAvailabilityFilter('all');
+                  }}
+                >
+                  Reset Filters
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-        
-        <div className="min-h-[400px]">
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-4">
-              {[...Array(8)].map((_, index) => (
-                <div key={index} className="glass-card rounded-xl h-96 animate-pulse bg-muted/50" />
-              ))}
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <p className="text-xl text-destructive">
-                Error loading events: {error.message}
-              </p>
-              <Button 
-                variant="outline" 
-                className="mt-4 glass-button"
-                onClick={() => {
-                  console.log('Manual refetch triggered');
-                  refetch();
-                }}
-              >
-                Try Again
-              </Button>
-            </div>
-          ) : filteredEvents.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-4">
-              {filteredEvents.map((event) => (
-                <EventCard 
-                  key={event.id}
-                  {...event}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-xl text-muted-foreground">
-                {eventsData.length === 0 
-                  ? "No events have been created yet. Be the first to create one!" 
-                  : "No events found matching your criteria."
-                }
-              </p>
-              <Button 
-                variant="outline" 
-                className="mt-4 glass-button"
-                onClick={() => {
-                  setSearchTerm('');
-                  setCategoryFilter('all');
-                  setAvailabilityFilter('all');
-                }}
-              >
-                Reset Filters
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
+      </main>
+      <Footer />
     </div>
   );
 };

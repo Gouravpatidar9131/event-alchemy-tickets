@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { QRCodeData, validateQRCodeData } from '@/utils/qrCodeGenerator';
-import { nftMintingService } from '@/services/NFTMintingService';
 
 export interface AttendanceRecord {
   id: string;
@@ -19,10 +18,6 @@ export interface AttendanceRecord {
   device_info: any;
   created_at: string;
   attendee_name?: string;
-  nft_mint_address?: string;
-  nft_metadata_uri?: string;
-  nft_minted_at?: string;
-  nft_status?: string;
 }
 
 export const useAttendance = () => {
@@ -118,8 +113,7 @@ export const useAttendance = () => {
           checked_in_by: user.id,
           qr_code_data: qrData as any,
           check_in_location: location,
-          device_info: deviceInfo,
-          nft_status: 'pending'
+          device_info: deviceInfo
         })
         .select()
         .single();
@@ -151,23 +145,6 @@ export const useAttendance = () => {
         attendee_name: attendeeProfile?.display_name || qrData.attendeeName || 'Unknown'
       };
 
-      // Start NFT minting process in background
-      console.log('Starting NFT minting process...');
-      nftMintingService.mintNFTForAttendance(attendance.id)
-        .then((result) => {
-          if (result.success) {
-            toast({
-              title: 'NFT Minted! 🎉',
-              description: 'Your attendance NFT has been minted successfully!',
-            });
-            // Refresh attendance data
-            queryClient.invalidateQueries({ queryKey: ['attendance'] });
-          }
-        })
-        .catch((error) => {
-          console.error('NFT minting failed:', error);
-        });
-
       return attendanceWithName as unknown as AttendanceRecord;
     } catch (error: any) {
       console.error('Error checking in attendee:', error);
@@ -190,7 +167,7 @@ export const useAttendance = () => {
       queryClient.invalidateQueries({ queryKey: ['userTickets'] });
       toast({
         title: 'Check-in Successful',
-        description: `${data.attendee_name} has been successfully checked in. NFT minting in progress...`,
+        description: `${data.attendee_name} has been successfully checked in`,
       });
     },
     onError: (error: any) => {
