@@ -27,10 +27,10 @@ const App = () => (
       <EthereumProvider>
         <SolanaProvider>
           <TooltipProvider>
-            <AuthProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
+            <BrowserRouter>
+              <AuthProvider>
+                <Toaster />
+                <Sonner />
                 <div className="min-h-screen bg-background flex flex-col">
                   <Navbar />
                   <main className="flex-1">
@@ -47,8 +47,8 @@ const App = () => (
                   </main>
                   <Footer />
                 </div>
-              </BrowserRouter>
-            </AuthProvider>
+              </AuthProvider>
+            </BrowserRouter>
           </TooltipProvider>
         </SolanaProvider>
       </EthereumProvider>
