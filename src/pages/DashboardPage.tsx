@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress';
 import { Link } from 'react-router-dom';
 import { useTickets } from '@/hooks/useTickets';
 import TicketCard from '@/components/TicketCard';
+import UserNFTCollection from '@/components/UserNFTCollection';
 
 // Mock user stats data
 const userStats = {
@@ -94,6 +95,11 @@ const DashboardPage = () => {
             <TabsContent value="rewards">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2">
+                  {/* Add NFT Collection section */}
+                  <div className="glass-card p-6 rounded-xl mb-6">
+                    <UserNFTCollection />
+                  </div>
+                  
                   <div className="glass-card p-6 rounded-xl mb-6">
                     <h3 className="text-xl font-bold mb-4">Loyalty Status</h3>
                     
