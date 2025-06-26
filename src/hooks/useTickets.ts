@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -108,7 +107,7 @@ export const useTickets = () => {
     return data as Ticket[];
   }, []);
 
-  const ensureUserProfile = async (eventId: string) => {
+  const ensureUserProfile = async () => {
     if (!user) return false;
     
     console.log('Checking user profile exists...');
@@ -124,34 +123,18 @@ export const useTickets = () => {
     }
 
     if (!profile) {
-      // Profile doesn't exist, create it
+      // Profile doesn't exist, create it without event_id
       console.log('Creating user profile...');
       const { error: insertError } = await supabase
         .from('profiles')
         .insert({
           id: user.id,
-          event_id: eventId,
-          display_name: user.email?.split('@')[0] || 'Anonymous User',
-          is_event_creator: false,
-          events_attended: 0,
-          loyalty_points: 0
+          display_name: user.email?.split('@')[0] || 'Anonymous User'
         });
       
       if (insertError) {
         console.error('Error creating profile:', insertError);
-        // Try a simpler approach if the full insert fails
-        const { error: simpleInsertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            event_id: eventId,
-            display_name: user.email?.split('@')[0] || 'Anonymous User'
-          });
-        
-        if (simpleInsertError) {
-          console.error('Error creating simple profile:', simpleInsertError);
-          throw new Error('Failed to create user profile');
-        }
+        throw new Error('Failed to create user profile');
       }
       return true;
     }
@@ -165,8 +148,8 @@ export const useTickets = () => {
     try {
       console.log("Purchasing ticket with params:", params);
       
-      // Ensure user profile exists with the event_id
-      await ensureUserProfile(params.eventId);
+      // Ensure user profile exists
+      await ensureUserProfile();
       
       // Validate payment method and price
       if (params.paymentMethod === 'free' && params.price > 0) {
