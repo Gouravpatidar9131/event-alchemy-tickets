@@ -243,8 +243,8 @@ export const useTickets = () => {
       const mockMintAddress = `nft_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       const mockMetadataUri = `ipfs://Qm${Math.random().toString(36).substring(2, 15)}`;
 
-      // Safely merge metadata with existing data
-      const currentMetadata = ticketData.metadata || {};
+      // Safely merge metadata with existing data - fix the spread operator error
+      const currentMetadata = ticketData.metadata && typeof ticketData.metadata === 'object' ? ticketData.metadata as Record<string, any> : {};
       const updatedMetadata = {
         ...currentMetadata,
         metadataUri: mockMetadataUri,
