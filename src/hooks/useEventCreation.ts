@@ -23,7 +23,6 @@ export const useEventCreation = () => {
     price: number;
     total_tickets: number;
     imageFile?: File;
-    category?: string;
   }) => {
     if (!user) {
       toast({
@@ -64,8 +63,7 @@ export const useEventCreation = () => {
         location: eventData.location,
         price: eventData.price,
         total_tickets: eventData.total_tickets,
-        image_url: imageUrl,
-        category: eventData.category
+        image_url: imageUrl
       });
       
       console.log('Event created and published successfully:', createdEvent);
