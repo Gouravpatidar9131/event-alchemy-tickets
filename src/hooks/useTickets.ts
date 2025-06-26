@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -267,7 +266,7 @@ export const useTickets = () => {
     enabled: !!user,
   });
 
-  const useEventTicketsQuery = (eventId: string) => useQuery({
+  const useEventTicketsQuery = () => useQuery({
     queryKey: ['eventTickets', eventId],
     queryFn: () => fetchEventTickets(eventId),
     enabled: !!eventId,
