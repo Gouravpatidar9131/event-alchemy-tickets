@@ -1,12 +1,20 @@
 
+import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Calendar, Award, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { ExternalLink, Calendar, Award, Clock, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { useUserNFTs, UserNFT } from '@/hooks/useUserNFTs';
 
 const UserNFTCollection = () => {
-  const { data: userNFTs, isLoading, error } = useUserNFTs();
+  const { data: userNFTs, isLoading, error, refetch } = useUserNFTs();
+
+  // Add debugging to see what NFTs are being fetched
+  useEffect(() => {
+    if (userNFTs) {
+      console.log('UserNFTCollection - NFTs loaded:', userNFTs);
+    }
+  }, [userNFTs]);
 
   const getStatusIcon = (status: string | null) => {
     switch (status) {
@@ -51,6 +59,11 @@ const UserNFTCollection = () => {
     }
   };
 
+  const handleRefresh = () => {
+    console.log('Refreshing NFT collection...');
+    refetch();
+  };
+
   if (isLoading) {
     return (
       <div className="text-center py-8">
@@ -64,6 +77,10 @@ const UserNFTCollection = () => {
     return (
       <div className="text-center py-8">
         <p className="text-red-600">Error loading NFTs: {error.message}</p>
+        <Button onClick={handleRefresh} className="mt-2" variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Retry
+        </Button>
       </div>
     );
   }
@@ -73,9 +90,13 @@ const UserNFTCollection = () => {
       <div className="text-center py-8">
         <Award className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
         <h3 className="text-lg font-semibold mb-2">No NFTs Yet</h3>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground mb-4">
           Attend events to collect exclusive NFT badges!
         </p>
+        <Button onClick={handleRefresh} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
       </div>
     );
   }
@@ -84,29 +105,39 @@ const UserNFTCollection = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold">Your NFT Collection</h3>
-        <Badge variant="outline" className="bg-solana-gradient text-white">
-          {userNFTs.filter(nft => nft.nft_status === 'minted').length} Minted
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-solana-gradient text-white">
+            {userNFTs.filter(nft => nft.nft_status === 'minted').length} Minted
+          </Badge>
+          <Button onClick={handleRefresh} size="sm" variant="outline">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {userNFTs.map((nft) => (
-          <Card key={nft.id} className="border-l-4 border-l-solana-purple">
+          <Card key={`${nft.source}-${nft.id}`} className="border-l-4 border-l-solana-purple">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2">
                   <Award className="h-4 w-4 text-solana-purple" />
                   {nft.event_title}
                 </span>
-                <Badge 
-                  variant="secondary" 
-                  className={`${getStatusColor(nft.nft_status)} flex items-center gap-1`}
-                >
-                  {getStatusIcon(nft.nft_status)}
-                  {nft.nft_status === 'minted' ? 'Minted' : 
-                   nft.nft_status === 'minting' ? 'Minting...' : 
-                   nft.nft_status === 'failed' ? 'Failed' : 'Pending'}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge 
+                    variant="secondary" 
+                    className={`${getStatusColor(nft.nft_status)} flex items-center gap-1`}
+                  >
+                    {getStatusIcon(nft.nft_status)}
+                    {nft.nft_status === 'minted' ? 'Minted' : 
+                     nft.nft_status === 'minting' ? 'Minting...' : 
+                     nft.nft_status === 'failed' ? 'Failed' : 'Pending'}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {nft.source === 'attendance' ? 'Event NFT' : 'Ticket NFT'}
+                  </Badge>
+                </div>
               </CardTitle>
               <CardDescription className="flex items-center gap-1 text-xs">
                 <Calendar className="h-3 w-3" />
