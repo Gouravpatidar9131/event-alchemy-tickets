@@ -107,7 +107,7 @@ export const useTickets = () => {
     return data as Ticket[];
   }, []);
 
-  const ensureUserProfile = async () => {
+  const ensureUserProfile = async (eventId: string) => {
     if (!user) return false;
     
     console.log('Checking user profile exists...');
@@ -124,6 +124,7 @@ export const useTickets = () => {
         .from('profiles')
         .insert({
           id: user.id,
+          event_id: eventId,
           display_name: user.email?.split('@')[0] || 'Anonymous User'
         });
       
@@ -146,8 +147,8 @@ export const useTickets = () => {
     try {
       console.log("Purchasing ticket with params:", params);
       
-      // Ensure user profile exists
-      await ensureUserProfile();
+      // Ensure user profile exists with the event_id
+      await ensureUserProfile(params.eventId);
       
       // Validate payment method and price
       if (params.paymentMethod === 'free' && params.price > 0) {

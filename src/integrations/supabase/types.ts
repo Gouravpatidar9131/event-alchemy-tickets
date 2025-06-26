@@ -64,14 +64,14 @@ export type Database = {
             columns: ["attendee_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedColumns: ["event_id"]
           },
           {
             foreignKeyName: "attendance_checked_in_by_fkey"
             columns: ["checked_in_by"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedColumns: ["event_id"]
           },
           {
             foreignKeyName: "attendance_event_id_fkey"
@@ -213,8 +213,8 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           display_name: string | null
+          event_id: string
           events_attended: number | null
-          id: string
           is_event_creator: boolean | null
           loyalty_points: number | null
           monad_wallet_address: string | null
@@ -225,8 +225,8 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          event_id: string
           events_attended?: number | null
-          id: string
           is_event_creator?: boolean | null
           loyalty_points?: number | null
           monad_wallet_address?: string | null
@@ -237,8 +237,8 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
+          event_id?: string
           events_attended?: number | null
-          id?: string
           is_event_creator?: boolean | null
           loyalty_points?: number | null
           monad_wallet_address?: string | null
@@ -303,7 +303,7 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedColumns: ["event_id"]
           },
           {
             foreignKeyName: "tickets_event_id_fkey"
