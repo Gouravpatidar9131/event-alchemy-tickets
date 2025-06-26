@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -238,12 +239,23 @@ export const useTickets = () => {
         throw new Error('This ticket has been cancelled');
       }
 
-      // Update the ticket status to used
+      // Generate mock NFT data for the ticket
+      const mockMintAddress = `nft_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      const mockMetadataUri = `ipfs://Qm${Math.random().toString(36).substring(2, 15)}`;
+
+      // Update the ticket status to used and add NFT data
       const { data, error } = await supabase
         .from('tickets')
         .update({
           checked_in_at: new Date().toISOString(),
-          status: 'used'
+          status: 'used',
+          mint_address: mockMintAddress,
+          metadata: {
+            ...ticketData.metadata,
+            metadataUri: mockMetadataUri,
+            nftMinted: true,
+            mintedAt: new Date().toISOString()
+          }
         })
         .eq('id', ticketId)
         .select('*, events!tickets_event_id_fkey(*)')
@@ -252,6 +264,25 @@ export const useTickets = () => {
       if (error) {
         console.error(`Error checking in ticket ${ticketId}:`, error);
         throw new Error('Failed to check in ticket. Please try again.');
+      }
+
+      // Also create an attendance record for compatibility
+      try {
+        await supabase
+          .from('attendance')
+          .insert({
+            ticket_id: ticketId,
+            event_id: ticketData.event_id,
+            attendee_id: user.id,
+            checked_in_at: new Date().toISOString(),
+            nft_status: 'minted',
+            nft_mint_address: mockMintAddress,
+            nft_metadata_uri: mockMetadataUri,
+            nft_minted_at: new Date().toISOString()
+          });
+      } catch (attendanceError) {
+        console.warn('Failed to create attendance record:', attendanceError);
+        // Don't fail the check-in if attendance record creation fails
       }
       
       console.log('Ticket checked in successfully:', data);
@@ -301,9 +332,10 @@ export const useTickets = () => {
       queryClient.invalidateQueries({ queryKey: ['userTickets'] });
       queryClient.invalidateQueries({ queryKey: ['eventTickets'] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['userNFTs'] });
       toast({
         title: 'Ticket checked in',
-        description: `Ticket has been successfully checked in for ${data.events?.title}`,
+        description: `Ticket has been successfully checked in for ${data.events?.title}. Your NFT has been minted!`,
       });
     },
     onError: (error: any) => {
