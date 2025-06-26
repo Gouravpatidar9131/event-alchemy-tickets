@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/providers/AuthProvider';
@@ -11,7 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarIcon, Upload, Loader2, Info } from 'lucide-react';
+import { CalendarIcon, Upload, Loader2, Info, X, Image } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/sonner';
@@ -43,6 +44,8 @@ const CreateEventPage = () => {
     imageFile: null as File | null,
   });
 
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
   // Get current chain token info
   const getCurrentChainToken = () => {
     return chainId ? CHAIN_TOKENS[chainId] || { name: 'Unknown', symbol: 'ETH', priceMultiplier: 1 } : { name: 'Ethereum', symbol: 'ETH', priceMultiplier: 1 };
@@ -66,7 +69,31 @@ const CreateEventPage = () => {
         toast('Image size must be less than 5MB');
         return;
       }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast('Please select a valid image file');
+        return;
+      }
+
       handleInputChange('imageFile', file);
+      
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+    }
+  };
+
+  const removeImage = () => {
+    handleInputChange('imageFile', null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
+    // Reset the file input
+    const fileInput = document.getElementById('image') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
     }
   };
 
@@ -100,11 +127,15 @@ const CreateEventPage = () => {
         date: dateTime.toISOString(),
         price: basePrice, // Store base price in database
         total_tickets: parseInt(formData.totalTickets),
-        image_url: formData.imageFile ? URL.createObjectURL(formData.imageFile) : '',
+        imageFile: formData.imageFile || undefined,
       });
 
       if (success) {
         toast('Event created successfully!');
+        // Clean up image preview
+        if (imagePreview) {
+          URL.revokeObjectURL(imagePreview);
+        }
         navigate('/dashboard');
       }
     } catch (error: any) {
@@ -258,21 +289,50 @@ const CreateEventPage = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">Event Image</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    id="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="flex-1"
-                  />
-                  <Upload className="h-4 w-4 text-muted-foreground" />
-                </div>
-                {formData.imageFile && (
-                  <p className="text-sm text-muted-foreground">
-                    Selected: {formData.imageFile.name}
-                  </p>
+                <Label htmlFor="image">Event Cover Image</Label>
+                {imagePreview ? (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Event preview"
+                      className="w-full h-48 object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={removeImage}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <Image className="h-8 w-8 text-muted-foreground" />
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          id="image"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                        <Label htmlFor="image" className="cursor-pointer">
+                          <Button type="button" variant="outline" asChild>
+                            <span>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Choose Image
+                            </span>
+                          </Button>
+                        </Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Upload a cover image for your event (max 5MB)
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
 

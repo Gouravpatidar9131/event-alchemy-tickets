@@ -5,6 +5,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { uploadEventImage } from '@/utils/imageUpload';
 
 export const useEventCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -21,7 +22,7 @@ export const useEventCreation = () => {
     location: string;
     price: number;
     total_tickets: number;
-    image_url: string;
+    imageFile?: File;
     category?: string;
   }) => {
     if (!user) {
@@ -37,8 +38,36 @@ export const useEventCreation = () => {
     try {
       console.log('Creating event with data:', eventData);
       
-      // Create the event (will be published by default due to database setting)
-      const createdEvent = await createEventMutation.mutateAsync(eventData);
+      let imageUrl = '';
+      
+      // Upload image if provided
+      if (eventData.imageFile) {
+        console.log('Uploading event image...');
+        try {
+          imageUrl = await uploadEventImage(eventData.imageFile);
+          console.log('Image uploaded successfully:', imageUrl);
+        } catch (error: any) {
+          console.error('Error uploading image:', error);
+          toast({
+            title: 'Image upload failed',
+            description: 'Failed to upload event image, but continuing with event creation',
+            variant: 'destructive',
+          });
+        }
+      }
+      
+      // Create the event with the uploaded image URL
+      const createdEvent = await createEventMutation.mutateAsync({
+        title: eventData.title,
+        description: eventData.description,
+        date: eventData.date,
+        location: eventData.location,
+        price: eventData.price,
+        total_tickets: eventData.total_tickets,
+        image_url: imageUrl,
+        category: eventData.category
+      });
+      
       console.log('Event created and published successfully:', createdEvent);
       
       // Force immediate cache invalidation and refetch for events
