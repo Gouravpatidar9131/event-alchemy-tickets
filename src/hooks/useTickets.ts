@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
 import { useToast } from '@/components/ui/use-toast';
-import { useContractPurchase } from './useContractPurchase';
 
 export interface Ticket {
   id: string;
@@ -47,7 +46,6 @@ export const useTickets = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { purchaseTicketWithContract } = useContractPurchase();
 
   const fetchUserTickets = useCallback(async () => {
     if (!user) {
@@ -163,23 +161,7 @@ export const useTickets = () => {
         throw new Error('Ethereum payments require a valid price');
       }
 
-      let contractTransactionData = null;
-      
-      // Handle blockchain transaction for paid tickets
-      if (params.paymentMethod === 'ethereum' && params.price > 0) {
-        console.log('Processing blockchain transaction...');
-        
-        contractTransactionData = await purchaseTicketWithContract({
-          eventId: params.eventId,
-          ticketType: params.ticketType,
-          quantity: 1, // Currently supporting single ticket purchases
-          priceInEth: params.price
-        });
-        
-        console.log('Blockchain transaction completed:', contractTransactionData);
-      }
-
-      // Create ticket record in database with contract info
+      // Create ticket record in database
       const ticketData = {
         event_id: params.eventId,
         owner_id: user.id,
@@ -189,24 +171,9 @@ export const useTickets = () => {
           eventDetails: params.eventDetails,
           currency: params.currency,
           paymentMethod: params.paymentMethod,
-          attendeeName: user.email?.split('@')[0] || 'Anonymous',
-          // Add contract transaction data if available
-          ...(contractTransactionData && {
-            contractTransaction: {
-              transactionHash: contractTransactionData.transactionHash,
-              blockNumber: contractTransactionData.blockNumber,
-              contractTicketId: contractTransactionData.ticketId,
-              chainId: contractTransactionData.chainId,
-              contractAddress: contractTransactionData.contractAddress
-            }
-          })
+          attendeeName: user.email?.split('@')[0] || 'Anonymous'
         },
-        status: 'active' as const,
-        // Store contract ticket ID and transaction hash if available
-        ...(contractTransactionData && {
-          token_id: contractTransactionData.ticketId.toString(),
-          mint_address: contractTransactionData.transactionHash
-        })
+        status: 'active' as const
       };
 
       console.log('Inserting ticket with data:', ticketData);

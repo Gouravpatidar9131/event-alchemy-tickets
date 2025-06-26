@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useCDPWallet } from '@/providers/CDPWalletProvider';
 import { useAuth } from '@/providers/AuthProvider';
@@ -182,13 +183,6 @@ const PurchaseTicketModal = ({
         }
       }
 
-      // Show processing message for blockchain transactions
-      if (!isEventFree && paymentMethod === 'ethereum') {
-        toast('Processing blockchain transaction...', {
-          description: 'Please confirm the transaction in your wallet',
-        });
-      }
-
       // Determine price and currency based on payment method and event price
       let finalPrice = 0;
       let currency: 'ETH' | 'FREE' | 'MATIC' | 'AVAX' = 'FREE';
@@ -209,8 +203,7 @@ const PurchaseTicketModal = ({
         chainId,
         chainToken,
         wallet: accounts[0],
-        isEventFree,
-        willUseContract: !isEventFree && paymentMethod === 'ethereum'
+        isEventFree
       });
       
       await purchaseTicketMutation.mutateAsync({
@@ -230,12 +223,10 @@ const PurchaseTicketModal = ({
       });
       
       const paymentMethodText = isEventFree || paymentMethod === 'free' ? 'for free' : 
-                               `with ${currency} on ${getChainName()} blockchain`;
+                               `with ${currency} on ${getChainName()}`;
       
       toast(`Ticket purchased successfully ${paymentMethodText}!`, {
-        description: paymentMethod === 'ethereum' ? 
-          'Your blockchain transaction has been confirmed and ticket is ready.' :
-          'Your ticket has been added to your collection.'
+        description: 'Your ticket has been added to your collection.'
       });
       
       onClose();
@@ -255,7 +246,7 @@ const PurchaseTicketModal = ({
     if (isQuantityExceedsAvailable) return `Only ${availableTickets} Available`;
     if (isEventFree) return 'Get Free Ticket';
     if (paymentMethod === 'free') return 'Get Free Ticket';
-    return `Pay with ${chainToken.symbol} on ${getChainName()} blockchain`;
+    return `Pay with ${chainToken.symbol} on ${getChainName()}`;
   };
 
   const getPaymentIcon = () => {
@@ -363,7 +354,7 @@ const PurchaseTicketModal = ({
             </div>
           )}
 
-          {/* Payment method selection - only show if event is not free */}
+          {/* Payment method selection - only show if event is not free and tickets are available */}
           {!isEventFree && !isEventSoldOut && !isQuantityExceedsAvailable && (
             <div className="space-y-3">
               <Label className="text-sm font-medium">Select Payment Method:</Label>
@@ -374,12 +365,9 @@ const PurchaseTicketModal = ({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <Coins className="h-4 w-4 mr-2 text-blue-600" />
-                        <span>Smart Contract Payment ({chainToken.name})</span>
+                        <span>CDP Wallet ({chainToken.name})</span>
                       </div>
                       <span className="text-sm text-muted-foreground">{totalPriceInToken.toFixed(4)} {chainToken.symbol}</span>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Secure blockchain transaction with smart contract
-                      </p>
                     </div>
                   </Label>
                 </div>
@@ -394,13 +382,13 @@ const PurchaseTicketModal = ({
             </div>
           )}
 
-          {/* Show contract transaction info for paid events */}
+          {/* Show payment method specific messages for paid events */}
           {!isEventFree && paymentMethod === 'ethereum' && !isEventSoldOut && (
             <div className="text-sm text-muted-foreground">
-              <p>This will create a blockchain transaction on {getChainName()} using a smart contract. Your ticket ownership will be recorded on-chain.</p>
+              <p>This will process payment through your connected CDP wallet on {getChainName()} using {chainToken.symbol}. Multi-chain support available.</p>
               {!isConnected && (
                 <div className="mt-2 p-2 bg-yellow-50 text-yellow-700 rounded border border-yellow-200 text-sm">
-                  Please connect your CDP wallet before proceeding with the smart contract transaction.
+                  Please connect your CDP wallet before proceeding with crypto payment.
                 </div>
               )}
             </div>
@@ -423,7 +411,7 @@ const PurchaseTicketModal = ({
             {isProcessing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {paymentMethod === 'ethereum' ? 'Processing Transaction...' : 'Processing...'}
+                Processing...
               </>
             ) : (
               <>
