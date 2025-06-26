@@ -1,3 +1,4 @@
+
 import { Calendar, Clock, MapPin, Image } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -102,27 +103,37 @@ const EventCard = ({
   };
 
   const shouldShowFallback = !isValidImageUrl(imageUrl) || imageError;
-  const displayImageUrl = shouldShowFallback ? getFallbackImage() : imageUrl;
 
   return (
     <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:translate-y-[-5px] hover:shadow-lg group">
       <div className="relative h-48 overflow-hidden bg-muted">
-        {/* Always show an image - either the original or fallback */}
-        <img 
-          src={displayImageUrl}
-          alt={title} 
-          className={`w-full h-full object-cover transition-opacity duration-300 ${
-            shouldShowFallback || imageLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
-          onLoad={handleImageLoad}
-          onError={handleImageError}
-          loading="lazy"
-        />
+        {/* Main image */}
+        {isValidImageUrl(imageUrl) && !imageError && (
+          <img 
+            src={imageUrl}
+            alt={title} 
+            className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        )}
         
-        {/* Loading state - only show while original image is loading */}
-        {!shouldShowFallback && !imageLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
-            <Image className="h-12 w-12 text-white opacity-50 animate-pulse" />
+        {/* Fallback image */}
+        {shouldShowFallback && (
+          <div className="absolute inset-0">
+            <img 
+              src={getFallbackImage()}
+              alt={`${title} - Event placeholder`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Final fallback - hide image and show icon
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            {/* Ultimate fallback - gradient background with icon */}
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+              <Image className="h-12 w-12 text-white opacity-50" />
+            </div>
           </div>
         )}
         
