@@ -85,55 +85,62 @@ const EventCard = ({
     setImageLoaded(false);
   };
 
-  // Check if imageUrl is valid (supports both Supabase storage URLs and external URLs)
+  // Check if imageUrl is valid and not empty
   const isValidImageUrl = (url: string) => {
-    if (!url || url.trim() === '') return false;
-    if (url.startsWith('blob:')) return false;
+    if (!url || url.trim() === '') {
+      console.log('Empty or null image URL for event:', id);
+      return false;
+    }
+    
+    // Check for blob URLs which are invalid
+    if (url.startsWith('blob:')) {
+      console.log('Blob URL detected for event:', id);
+      return false;
+    }
     
     // Check for Supabase storage URLs
-    if (url.includes('supabase') && url.includes('/storage/v1/object/public/')) return true;
+    if (url.includes('supabase') && url.includes('/storage/v1/object/public/')) {
+      console.log('Valid Supabase storage URL for event:', id, url);
+      return true;
+    }
     
     // Check for valid external URLs
     try {
-      new URL(url);
+      const parsedUrl = new URL(url);
+      console.log('Valid external URL for event:', id, url);
       return true;
     } catch {
+      console.log('Invalid URL format for event:', id, url);
       return false;
     }
   };
 
-  const shouldShowFallback = !isValidImageUrl(imageUrl) || imageError;
+  const shouldUseFallback = !isValidImageUrl(imageUrl) || imageError;
+  const displayImageUrl = shouldUseFallback ? getFallbackImage() : imageUrl;
+
+  console.log('EventCard render:', { 
+    id, 
+    title, 
+    imageUrl, 
+    shouldUseFallback, 
+    displayImageUrl 
+  });
 
   return (
     <div className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:translate-y-[-5px] hover:shadow-lg group">
       <div className="relative h-48 overflow-hidden bg-muted">
-        {/* Main image */}
-        {isValidImageUrl(imageUrl) && !imageError && (
-          <img 
-            src={imageUrl}
-            alt={title} 
-            className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-          />
-        )}
+        <img 
+          src={displayImageUrl}
+          alt={title} 
+          className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded || shouldUseFallback ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+        />
         
-        {/* Fallback image */}
-        {shouldShowFallback && (
-          <div className="absolute inset-0">
-            <img 
-              src={getFallbackImage()}
-              alt={`${title} - Event placeholder`}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Final fallback - hide image and show icon
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-            {/* Ultimate fallback - gradient background with icon */}
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
-              <Image className="h-12 w-12 text-white opacity-50" />
-            </div>
+        {/* Loading state */}
+        {!imageLoaded && !shouldUseFallback && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse">
+            <Image className="h-12 w-12 text-muted-foreground" />
           </div>
         )}
         

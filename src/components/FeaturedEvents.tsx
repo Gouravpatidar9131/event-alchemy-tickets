@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -36,8 +35,8 @@ const FeaturedEvents = () => {
       // Format date properly
       const eventDate = new Date(event.date);
       
-      // Use a default image if none is provided
-      const defaultImage = 'https://images.unsplash.com/photo-1591522811280-a8759970b03f';
+      // Use the actual image URL from the database
+      console.log('Featured event image URL from database:', event.id, event.image_url);
       
       return {
         id: event.id,
@@ -45,7 +44,7 @@ const FeaturedEvents = () => {
         date: format(eventDate, 'PP'),
         time: format(eventDate, 'p'),
         location: event.location,
-        imageUrl: event.image_url && event.image_url.trim() !== '' ? event.image_url : defaultImage,
+        imageUrl: event.image_url || '', // Pass the actual database image URL
         price: `${event.price} SOL`,
         category: 'Technology', // Default category when not specified in DB
         availability
