@@ -13,13 +13,19 @@ export const useRealtimeTickets = (eventId?: string) => {
   const handleTicketPurchase = useCallback((payload: any) => {
     console.log('Real-time ticket purchase detected:', payload);
     
-    // Invalidate and refetch relevant queries
+    // Invalidate and refetch relevant queries immediately
     queryClient.invalidateQueries({ queryKey: ['events'] });
     queryClient.invalidateQueries({ queryKey: ['userTickets'] });
     
     if (eventId) {
       queryClient.invalidateQueries({ queryKey: ['eventTickets', eventId] });
       queryClient.invalidateQueries({ queryKey: ['event', eventId] });
+    }
+
+    // Force immediate refetch to update UI
+    queryClient.refetchQueries({ queryKey: ['events'] });
+    if (eventId) {
+      queryClient.refetchQueries({ queryKey: ['event', eventId] });
     }
 
     // Show toast notification for user's own ticket purchases
@@ -47,11 +53,13 @@ export const useRealtimeTickets = (eventId?: string) => {
   const handleEventUpdate = useCallback((payload: any) => {
     console.log('Real-time event update detected:', payload);
     
-    // Invalidate queries for event updates
+    // Invalidate queries for event updates and force immediate refetch
     queryClient.invalidateQueries({ queryKey: ['events'] });
+    queryClient.refetchQueries({ queryKey: ['events'] });
     
     if (eventId) {
       queryClient.invalidateQueries({ queryKey: ['event', eventId] });
+      queryClient.refetchQueries({ queryKey: ['event', eventId] });
     }
 
     // Show notification for significant event changes
@@ -86,9 +94,15 @@ export const useRealtimeTickets = (eventId?: string) => {
     
     // Invalidate user tickets when any ticket is updated (status changes, etc.)
     queryClient.invalidateQueries({ queryKey: ['userTickets'] });
+    queryClient.invalidateQueries({ queryKey: ['userNFTs'] });
+    
+    // Force immediate refetch
+    queryClient.refetchQueries({ queryKey: ['userTickets'] });
+    queryClient.refetchQueries({ queryKey: ['userNFTs'] });
     
     if (eventId) {
       queryClient.invalidateQueries({ queryKey: ['eventTickets', eventId] });
+      queryClient.refetchQueries({ queryKey: ['eventTickets', eventId] });
     }
 
     // Show notification for ticket status changes
@@ -110,6 +124,8 @@ export const useRealtimeTickets = (eventId?: string) => {
   }, [queryClient, toast, eventId, user]);
 
   useEffect(() => {
+    console.log('Setting up real-time subscriptions for tickets and events');
+    
     // Subscribe to ticket changes (inserts and updates)
     const ticketsChannel = supabase
       .channel('realtime-tickets')
@@ -148,6 +164,7 @@ export const useRealtimeTickets = (eventId?: string) => {
       .subscribe();
 
     return () => {
+      console.log('Cleaning up real-time subscriptions');
       supabase.removeChannel(ticketsChannel);
       supabase.removeChannel(eventsChannel);
     };

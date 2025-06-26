@@ -243,6 +243,15 @@ export const useTickets = () => {
       const mockMintAddress = `nft_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       const mockMetadataUri = `ipfs://Qm${Math.random().toString(36).substring(2, 15)}`;
 
+      // Safely merge metadata with existing data
+      const currentMetadata = ticketData.metadata || {};
+      const updatedMetadata = {
+        ...currentMetadata,
+        metadataUri: mockMetadataUri,
+        nftMinted: true,
+        mintedAt: new Date().toISOString()
+      };
+
       // Update the ticket status to used and add NFT data
       const { data, error } = await supabase
         .from('tickets')
@@ -250,12 +259,7 @@ export const useTickets = () => {
           checked_in_at: new Date().toISOString(),
           status: 'used',
           mint_address: mockMintAddress,
-          metadata: {
-            ...ticketData.metadata,
-            metadataUri: mockMetadataUri,
-            nftMinted: true,
-            mintedAt: new Date().toISOString()
-          }
+          metadata: updatedMetadata
         })
         .eq('id', ticketId)
         .select('*, events!tickets_event_id_fkey(*)')

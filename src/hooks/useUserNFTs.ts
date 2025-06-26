@@ -21,6 +21,8 @@ export const useUserNFTs = () => {
   const fetchUserNFTs = async (): Promise<UserNFT[]> => {
     if (!user) return [];
 
+    console.log(`Fetching NFTs for user: ${user.id}`);
+
     // First, try to get NFTs from attendance table (for events with check-in based NFTs)
     const { data: attendanceNFTs, error: attendanceError } = await supabase
       .from('attendance')
@@ -86,19 +88,29 @@ export const useUserNFTs = () => {
       allNFTs.push(...mappedAttendanceNFTs);
     }
 
-    // Process ticket-based NFTs
+    // Process ticket-based NFTs with proper type checking
     if (ticketNFTs) {
-      const mappedTicketNFTs = ticketNFTs.map(item => ({
-        id: item.id,
-        event_id: item.event_id,
-        event_title: item.events?.title || 'Unknown Event',
-        event_date: item.events?.date || '',
-        nft_mint_address: item.mint_address,
-        nft_metadata_uri: item.metadata?.metadataUri || null,
-        nft_status: 'minted', // Tickets with mint_address are considered minted
-        nft_minted_at: item.checked_in_at, // Use check-in time as mint time for tickets
-        checked_in_at: item.checked_in_at,
-      }));
+      const mappedTicketNFTs = ticketNFTs.map(item => {
+        let metadataUri = null;
+        
+        // Safe type checking for metadata
+        if (item.metadata && typeof item.metadata === 'object' && item.metadata !== null) {
+          const metadata = item.metadata as { [key: string]: any };
+          metadataUri = metadata.metadataUri || null;
+        }
+
+        return {
+          id: item.id,
+          event_id: item.event_id,
+          event_title: item.events?.title || 'Unknown Event',
+          event_date: item.events?.date || '',
+          nft_mint_address: item.mint_address,
+          nft_metadata_uri: metadataUri,
+          nft_status: 'minted', // Tickets with mint_address are considered minted
+          nft_minted_at: item.checked_in_at, // Use check-in time as mint time for tickets
+          checked_in_at: item.checked_in_at,
+        };
+      });
       allNFTs.push(...mappedTicketNFTs);
     }
 
@@ -107,6 +119,7 @@ export const useUserNFTs = () => {
       index === self.findIndex(t => t.event_id === nft.event_id)
     ).sort((a, b) => new Date(b.checked_in_at).getTime() - new Date(a.checked_in_at).getTime());
 
+    console.log(`Found ${uniqueNFTs.length} NFTs for user ${user.id}:`, uniqueNFTs);
     return uniqueNFTs;
   };
 
