@@ -116,9 +116,14 @@ export const useTickets = () => {
       .from('profiles')
       .select('id')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code === 'PGRST116') {
+    if (error) {
+      console.error('Error checking profile:', error);
+      throw new Error('Failed to verify user profile');
+    }
+
+    if (!profile) {
       // Profile doesn't exist, create it
       console.log('Creating user profile...');
       const { error: insertError } = await supabase
@@ -126,17 +131,29 @@ export const useTickets = () => {
         .insert({
           id: user.id,
           event_id: eventId,
-          display_name: user.email?.split('@')[0] || 'Anonymous User'
+          display_name: user.email?.split('@')[0] || 'Anonymous User',
+          is_event_creator: false,
+          events_attended: 0,
+          loyalty_points: 0
         });
       
       if (insertError) {
         console.error('Error creating profile:', insertError);
-        throw new Error('Failed to create user profile');
+        // Try a simpler approach if the full insert fails
+        const { error: simpleInsertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            event_id: eventId,
+            display_name: user.email?.split('@')[0] || 'Anonymous User'
+          });
+        
+        if (simpleInsertError) {
+          console.error('Error creating simple profile:', simpleInsertError);
+          throw new Error('Failed to create user profile');
+        }
       }
       return true;
-    } else if (error) {
-      console.error('Error checking profile:', error);
-      throw new Error('Failed to verify user profile');
     }
     
     return true;
