@@ -213,7 +213,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           display_name: string | null
-          event_id: string
+          event_id: string | null
           events_attended: number | null
           id: string
           is_event_creator: boolean | null
@@ -226,7 +226,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
-          event_id: string
+          event_id?: string | null
           events_attended?: number | null
           id: string
           is_event_creator?: boolean | null
@@ -239,7 +239,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           display_name?: string | null
-          event_id?: string
+          event_id?: string | null
           events_attended?: number | null
           id?: string
           is_event_creator?: boolean | null

@@ -123,12 +123,13 @@ export const useTickets = () => {
     }
 
     if (!profile) {
-      // Profile doesn't exist, create it without event_id
+      // Profile doesn't exist, create it with event_id as null
       console.log('Creating user profile...');
       const { error: insertError } = await supabase
         .from('profiles')
         .insert({
           id: user.id,
+          event_id: null,
           display_name: user.email?.split('@')[0] || 'Anonymous User'
         });
       
